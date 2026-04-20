@@ -226,20 +226,48 @@ async def channel_post_handler(message: Message):
 async def main():
     await init_db()
 
-    # Запуск WebApp сервера
+    # === 1. Создаём aiohttp приложение ===
     app = web.Application()
+
+    # Твои API-роуты для WebApp
     app.router.add_post('/api/stars', lambda r: api_handler(r, "stars"))
     app.router.add_post('/api/categories', lambda r: api_handler(r, "categories"))
     app.router.add_post('/api/paid', lambda r: api_handler(r, "paid"))
     app.router.add_post('/api/comments', api_comments)
 
+    # === 2. Настраиваем webhook от aiogram (самое важное!) ===
+    from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
+    WEBHOOK_PATH = f"/bot/{BOT_TOKEN}"          # секретный путь
+    BASE_URL = os.getenv("RENDER_EXTERNAL_URL")  # Render автоматически даёт https://px-only.onrender.com
+
+    if not BASE_URL:
+        logging.error("RENDER_EXTERNAL_URL не найдена! Добавь её в Environment Variables на Render")
+        BASE_URL = "https://px-only.onrender.com"  # fallback на всякий случай
+
+    webhook_url = f"{BASE_URL}{WEBHOOK_PATH}"
+
+    # Регистрируем обработчик обновлений от Telegram
+    webhook_handler = SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot,
+    )
+    webhook_handler.register(app, path=WEBHOOK_PATH)
+
+    # Автоматически настраиваем startup/shutdown
+    setup_application(app, dp, bot=bot)
+
+    # === 3. Запуск сервера ===
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    site = web.TCPSite(runner, '0.0.0.0', int(os.getenv("PORT", 8080)))
     await site.start()
 
-    logging.info("WebApp сервер запущен на порту 8080")
-    await dp.start_polling(bot)
+    logging.info(f"🚀 Сервер запущен на порту {os.getenv('PORT', 8080)}")
+    logging.info(f"✅ Webhook будет установлен на: {webhook_url}")
+
+    # Держим сервер запущенным
+    await asyncio.Event().wait()   # бесконечное ожидание
 
 
 if __name__ == "__main__":
