@@ -20,7 +20,7 @@ CHANNEL_USERNAME = "@твой_канал"         # для информации
 ADMIN_USER_ID = 123456789                # твой ID
 
 DB_NAME = "database.db"
-WEBAPP_URL = "https://abc123.ngrok.io"   # ← замени на реальный HTTPS URL
+WEBAPP_URL = "#"   # ← замени на реальный HTTPS URL
 
 logging.basicConfig(level=logging.INFO)
 
