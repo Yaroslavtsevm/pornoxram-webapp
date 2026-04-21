@@ -7,62 +7,60 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <style>
-    body { background: #000; color: #fff; font-family: system-ui, sans-serif; }
-    .tab-active { background: linear-gradient(90deg, #f97316, #ec4899); color: white; }
+    body { background: #000; color: #fff; }
+    .tab-active { 
+      background: linear-gradient(90deg, #f97316, #ec4899) !important; 
+      color: white !important; 
+      box-shadow: 0 4px 15px rgba(249, 115, 22, 0.5);
+    }
     .card { transition: all 0.3s ease; }
     .card:hover { transform: scale(1.05); }
   </style>
 </head>
-<body class="min-h-screen">
+<body class="min-h-screen pb-20">
 
   <!-- Header -->
   <div class="bg-black pt-4 pb-3 px-4 flex items-center justify-between border-b border-zinc-800">
     <div class="flex items-center gap-3">
-      <div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-pink-500 rounded-full flex items-center justify-center text-2xl">🔥</div>
-      <div>
-        <span class="text-3xl font-black tracking-tighter bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">PX</span>
-      </div>
+      <div class="w-11 h-11 bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 rounded-2xl flex items-center justify-center text-3xl shadow-lg">🔥</div>
+      <span class="text-4xl font-black tracking-tighter bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-transparent">PX</span>
     </div>
+    
     <button onclick="toggleLanguage()" id="langBtn"
-            class="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 px-5 py-2 rounded-3xl text-sm font-medium">
+            class="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 px-6 py-2.5 rounded-3xl text-sm font-medium transition">
       🇷🇺 RU
     </button>
   </div>
 
   <!-- Tabs -->
-  <div class="px-4 pt-4">
-    <div class="flex bg-zinc-900 rounded-3xl p-1 shadow-inner">
-      <button onclick="switchTab(0)" id="tab0" 
-              class="tab flex-1 py-4 rounded-3xl font-semibold tab-active flex items-center justify-center gap-2">
-        <span>🌟</span><span id="tabStars">Звезды</span>
+  <div class="px-4 pt-4 pb-2">
+    <div class="flex bg-zinc-900 rounded-3xl p-1.5 shadow-inner">
+      <button onclick="switchTab(0)" id="tab0" class="tab flex-1 py-4 rounded-3xl font-semibold tab-active flex items-center justify-center gap-2 text-base">
+        🌟 <span id="tabStars">Звезды</span>
       </button>
-      <button onclick="switchTab(1)" id="tab1" 
-              class="tab flex-1 py-4 rounded-3xl font-semibold flex items-center justify-center gap-2">
-        <span>📂</span><span id="tabCats">Категории</span>
+      <button onclick="switchTab(1)" id="tab1" class="tab flex-1 py-4 rounded-3xl font-semibold flex items-center justify-center gap-2 text-base">
+        📂 <span id="tabCats">Категории</span>
       </button>
-      <button onclick="switchTab(2)" id="tab2" 
-              class="tab flex-1 py-4 rounded-3xl font-semibold flex items-center justify-center gap-2">
-        <span>💰</span><span id="tabPaid">Платное</span>
+      <button onclick="switchTab(2)" id="tab2" class="tab flex-1 py-4 rounded-3xl font-semibold flex items-center justify-center gap-2 text-base">
+        💰 <span id="tabPaid">Платное</span>
       </button>
-      <button onclick="switchTab(3)" id="tab3" 
-              class="tab hidden flex-1 py-4 rounded-3xl font-semibold flex items-center justify-center gap-2">
-        <span>⚙️</span><span id="tabAdmin">Админ</span>
+      <button onclick="switchTab(3)" id="tab3" class="tab hidden flex-1 py-4 rounded-3xl font-semibold flex items-center justify-center gap-2 text-base">
+        ⚙️ <span id="tabAdmin">Админ</span>
       </button>
     </div>
   </div>
 
-  <!-- Content -->
+  <!-- Content Area -->
   <div class="p-4">
     <div id="content0" class="tab-content grid grid-cols-2 gap-4"></div>
     <div id="content1" class="tab-content hidden grid grid-cols-2 gap-4"></div>
     <div id="content2" class="tab-content hidden space-y-6"></div>
-    <div id="content3" class="tab-content hidden"></div>
+    <div id="content3" class="tab-content hidden p-4"></div>
   </div>
 
   <script>
     let currentTab = 0;
     let lang = localStorage.getItem('pxLang') || 'ru';
-    let isAdmin = false;
     const ADMIN_ID = 1423028519;
 
     const translations = {
@@ -70,9 +68,7 @@
       en: { stars: "Stars",   cats: "Categories", paid: "Paid",   admin: "Admin" }
     };
 
-    function t(key) {
-      return translations[lang][key] || key;
-    }
+    function t(key) { return translations[lang][key] || key; }
 
     function updateLangUI() {
       document.getElementById('langBtn').innerHTML = lang === 'ru' ? '🇷🇺 RU' : '🇬🇧 EN';
@@ -94,13 +90,12 @@
       try {
         const res = await fetch(endpoint, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: new URLSearchParams({ ...body, _auth: token })
         });
-        if (!res.ok) throw new Error('Unauthorized');
         return await res.json();
       } catch (e) {
-        console.error(e);
+        console.error("API Error:", e);
         return [];
       }
     }
@@ -123,79 +118,75 @@
       else if (tab === 1) data = await apiPost('/api/categories');
       else if (tab === 2) data = await apiPost('/api/paid');
       else if (tab === 3) {
-        showAdminPanel();
+        renderAdminPanel();
         return;
       }
 
       const container = document.getElementById(`content${tab}`);
       container.innerHTML = '';
 
-      if (tab === 0) {
-        container.innerHTML = data.map(item => `
-          <div onclick="openStar(${item.id}, '${item.name}', '${item.photo_url || ''}')" 
-               class="card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer">
-            <img src="${item.photo_url || 'https://picsum.photos/id/1015/600/600'}" class="w-full aspect-square object-cover">
+      if (tab === 0) { // Stars
+        container.innerHTML = data.map(s => `
+          <div onclick="openItem('star', ${s.id}, '${s.name}')" class="card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer">
+            <img src="${s.photo_url || 'https://picsum.photos/id/1015/600/600'}" class="w-full aspect-square object-cover">
             <div class="p-4">
-              <p class="font-semibold">${item.name}</p>
-              ${item.hashtag ? `<p class="text-orange-400 text-sm">${item.hashtag}</p>` : ''}
+              <p class="font-semibold text-lg">${s.name}</p>
+              ${s.hashtag ? `<p class="text-orange-400">${s.hashtag}</p>` : ''}
             </div>
           </div>
         `).join('');
-      } else if (tab === 1) {
-        container.innerHTML = data.map(item => `
-          <div onclick="alert('Контент категории ${item.name} скоро будет доступен')" 
-               class="card bg-zinc-900 rounded-3xl p-8 text-center cursor-pointer hover:bg-zinc-800">
-            <p class="text-xl font-medium">${item.name}</p>
+      } else if (tab === 1) { // Categories
+        container.innerHTML = data.map(c => `
+          <div onclick="openItem('category', ${c.id}, '${c.name}')" 
+               class="card bg-zinc-900 rounded-3xl p-10 text-center cursor-pointer hover:bg-zinc-800">
+            ${c.name}
           </div>
         `).join('');
-      } else if (tab === 2) {
+      } else if (tab === 2) { // Paid
         container.innerHTML = data.map(item => `
-          <div onclick="openPaid(${item.id}, '${item.file_url}', '${item.type}', '${item.caption || ''}')" 
-               class="card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer">
-            ${item.type === 'photo' 
-              ? `<img src="${item.file_url}" class="w-full">` 
-              : `<video src="${item.file_url}" controls class="w-full"></video>`}
+          <div onclick="alert('Платный контент: ${item.caption || 'Без названия'}')" class="card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer">
+            ${item.type === 'photo' ? `<img src="${item.file_url}" class="w-full">` : `<video src="${item.file_url}" controls></video>`}
             <div class="p-4 text-sm">${item.caption || ''}</div>
           </div>
         `).join('');
       }
     }
 
-    function showAdminPanel() {
+    function renderAdminPanel() {
       document.getElementById('content3').innerHTML = `
         <div class="bg-zinc-900 rounded-3xl p-8 text-center">
-          <h2 class="text-3xl font-bold mb-6">⚙️ Админ-панель</h2>
-          <p class="mb-8 text-zinc-400">Здесь будет полный CRUD</p>
-          <button onclick="alert('Админка в разработке. Скоро добавим редактирование и удаление.')" 
-                  class="bg-gradient-to-r from-purple-500 to-pink-500 px-10 py-4 rounded-3xl font-bold">
-            Открыть расширенную админку
+          <h2 class="text-3xl font-bold mb-4">⚙️ Админ-панель</h2>
+          <p class="text-zinc-400 mb-8">Добро пожаловать, @PX_MrM</p>
+          <button onclick="alert('Полная админка с добавлением/редактированием/удалением будет в следующей версии.\\nПока можно добавлять через базу или через /start.')" 
+                  class="w-full py-6 bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl font-bold text-xl">
+            Расширенная админка (в разработке)
           </button>
         </div>`;
     }
 
-    function openStar(id, name, photo) {
-      alert(`Открыт профиль звезды: ${name}\nID: ${id}`);
-      // Здесь можно открыть модальное окно с контентом звезды
-    }
-
-    function openPaid(id, fileUrl, type, caption) {
-      alert(`Платный контент ID: ${id}\n${caption}`);
+    function openItem(type, id, name) {
+      alert(`Открыто: ${type.toUpperCase()} — ${name}\nID: ${id}\n\nКонтент скоро будет загружаться автоматически.`);
     }
 
     // Инициализация
-    window.onload = () => {
-      if (typeof Telegram === 'undefined' || !Telegram.WebApp) {
-        console.error("Telegram WebApp not found");
+    window.onload = function() {
+      if (typeof Telegram === "undefined" || !Telegram.WebApp) {
+        console.error("Telegram WebApp не найден");
         return;
       }
+
       Telegram.WebApp.ready();
       Telegram.WebApp.expand();
 
-      // Проверка админа
+      // Проверка админа по ID
       const user = Telegram.WebApp.initDataUnsafe?.user;
+      console.log("User ID:", user?.id);   // ← Для отладки
+
       if (user && user.id === ADMIN_ID) {
-        isAdmin = true;
+        console.log("✅ Админ обнаружен!");
         document.getElementById('tab3').classList.remove('hidden');
+      } else {
+        console.log("❌ Админ не обнаружен. ID:", user?.id);
       }
 
       updateLangUI();
