@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PornoXram</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- Cloudinary Video Player -->
+  <link rel="stylesheet" href="https://unpkg.com/cloudinary-video-player@1.10.0/dist/cld-video-player.min.css">
+  <script src="https://unpkg.com/cloudinary-video-player@1.10.0/dist/cld-video-player.min.js"></script>
+  <style>
+    body { background: #0a0a0a; color: white; }
+    .card:hover { transform: scale(1.04); box-shadow: 0 0 25px rgba(236, 72, 153, 0.6); }
+    .cld-video-player { width: 100% !important; border-radius: 20px; }
+  </style>
+</head>
+<body class="pb-28">
+  <!-- HEADER -->
+  <header class="fixed top-0 left-0 right-0 bg-zinc-950 border-b border-pink-600 z-50">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <h1 class="text-4xl font-black bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">PornoXram</h1>
+      <div class="flex gap-2">
+        <button onclick="setLang('ru')" id="btn-ru" class="lang-btn px-5 py-2 rounded-2xl bg-pink-600 text-sm">🇷🇺 RU</button>
+        <button onclick="setLang('en')" id="btn-en" class="lang-btn px-5 py-2 rounded-2xl text-sm">🇬🇧 EN</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-5xl mx-auto px-4 pt-20">
+    <input id="search-input" type="text" placeholder="Поиск моделей или видео..." 
+      class="w-full bg-zinc-900 border border-zinc-700 rounded-3xl px-6 py-4 text-lg mb-8 focus:outline-none focus:border-pink-500"
+      onkeyup="if(event.key==='Enter') search()">
+
+    <!-- Табы -->
+    <div class="flex border-b border-zinc-800 mb-8">
+      <button onclick="switchTab(0)" id="tab0" class="tab flex-1 py-5 text-xl font-semibold border-b-4 border-pink-500">Модели</button>
+      <button onclick="switchTab(1)" id="tab1" class="tab flex-1 py-5 text-xl font-semibold">Категории</button>
+    </div>
+
+    <div id="content0">
+      <div id="models-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4"></div>
+    </div>
+
+    <div id="content1" class="hidden">
+      <div id="hashtags" class="flex flex-wrap gap-3 mb-10"></div>
+      <div id="category-videos" class="grid grid-cols-1 gap-6"></div>
+    </div>
+  </div>
+
+  <!-- DONATE -->
+  <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+    <button onclick="showDonate()" class="bg-gradient-to-r from-pink-600 to-purple-600 text-white font-bold text-2xl px-12 py-5 rounded-3xl flex items-center gap-4 shadow-2xl">
+      💎 СПОНСИРОВАТЬ <span class="text-3xl">⭐</span>
+    </button>
+  </div>
+
+  <!-- ADMIN BUTTON -->
+  <button onclick="toggleAdminPanel()" id="admin-btn" 
+    class="hidden fixed bottom-28 right-6 bg-red-600 hover:bg-red-700 text-white p-5 rounded-3xl text-3xl shadow-2xl">⚙️</button>
+
+  <!-- ADMIN PANEL (модальное окно) -->
+  <div id="admin-panel" class="hidden fixed inset-0 bg-black/95 z-[100] overflow-auto p-6">
+    <div class="max-w-4xl mx-auto bg-zinc-900 rounded-3xl p-8">
+      <div class="flex justify-between mb-8">
+        <h2 class="text-4xl font-bold">Админ-панель</h2>
+        <button onclick="toggleAdminPanel()" class="text-5xl leading-none">✕</button>
+      </div>
+
+      <!-- Добавить модель -->
+      <div class="mb-12 border-b border-zinc-700 pb-12">
+        <h3 class="text-2xl mb-4">Добавить модель</h3>
+        <input id="model-ru" placeholder="Имя модели (RU)" class="w-full mb-3 p-4 bg-zinc-800 rounded-2xl">
+        <input id="model-en" placeholder="Имя модели (EN)" class="w-full mb-3 p-4 bg-zinc-800 rounded-2xl">
+        <input id="model-photo" type="file" accept="image/*" class="w-full mb-4">
+        <button onclick="addModel()" class="w-full bg-pink-600 py-5 rounded-2xl font-bold">Загрузить модель</button>
+      </div>
+
+      <!-- Добавить видео -->
+      <div>
+        <h3 class="text-2xl mb-4">Добавить видео</h3>
+        <input id="video-title-ru" placeholder="Название (RU)" class="w-full mb-3 p-4 bg-zinc-800 rounded-2xl">
+        <input id="video-title-en" placeholder="Название (EN)" class="w-full mb-3 p-4 bg-zinc-800 rounded-2xl">
+        <textarea id="video-desc-ru" placeholder="Описание (RU)" class="w-full mb-3 p-4 bg-zinc-800 rounded-2xl h-24"></textarea>
+        <textarea id="video-desc-en" placeholder="Описание (EN)" class="w-full mb-3 p-4 bg-zinc-800 rounded-2xl h-24"></textarea>
+        
+        <select id="video-models" multiple class="w-full mb-4 p-4 bg-zinc-800 rounded-2xl"></select>
+        
+        <input id="video-hashtags" placeholder="Хэштеги через запятую (#bigass, #milf)" class="w-full mb-4 p-4 bg-zinc-800 rounded-2xl">
+        <input id="video-file" type="file" accept="video/*" class="w-full mb-4">
+        <button onclick="addVideo()" class="w-full bg-purple-600 py-5 rounded-2xl font-bold">Загрузить видео</button>
+      </div>
+
+      <!-- Списки для удаления/управления -->
+      <div id="admin-lists" class="mt-16"></div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
