@@ -224,51 +224,54 @@ async def channel_post_handler(message: Message):
 
 
 # ====================== ЗАПУСК ======================
-async def main():
-    await init_db()
+    # ====================== ЗАПУСК ======================
+    async def main():
+        await init_db()
 
-    # === 1. Создаём aiohttp приложение ===
-    app = web.Application()
+        app = web.Application()
 
-    # Твои API-роуты для WebApp
-    app.router.add_post('/api/stars', lambda r: api_handler(r, "stars"))
-    app.router.add_post('/api/categories', lambda r: api_handler(r, "categories"))
-    app.router.add_post('/api/paid', lambda r: api_handler(r, "paid"))
-    app.router.add_post('/api/comments', api_comments)
+        # === ТВОИ API ===
+        app.router.add_post('/api/stars', lambda r: api_handler(r, "stars"))
+        app.router.add_post('/api/categories', lambda r: api_handler(r, "categories"))
+        app.router.add_post('/api/paid', lambda r: api_handler(r, "paid"))
+        app.router.add_post('/api/comments', api_comments)
 
-    # === 2. Настраиваем webhook от aiogram (самое важное!) ===
-    from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+        # === РАЗДАЧА СТАТИКИ ДЛЯ WEBAPP ===
+        static_dir = os.path.join(os.getcwd(), "static")
+        if os.path.exists(static_dir):
+            app.router.add_static('/static/', static_dir, name='static')
+            logging.info(f"✅ Static files served from /static/ → {static_dir}")
+        else:
+            logging.warning("⚠️ Папка 'static' не найдена в репозитории! WebApp не загрузится.")
 
-    WEBHOOK_PATH = f"/bot/{BOT_TOKEN}"          # секретный путь
-    BASE_URL = os.getenv("RENDER_EXTERNAL_URL")  # Render автоматически даёт https://px-only.onrender.com
+        # === WEBHOOK AIogram ===
+        from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
-    if not BASE_URL:
-        logging.error("RENDER_EXTERNAL_URL не найдена! Добавь её в Environment Variables на Render")
-        BASE_URL = "https://px-only.onrender.com"  # fallback на всякий случай
+        WEBHOOK_PATH = f"/bot/{BOT_TOKEN}"
+        BASE_URL = os.getenv("RENDER_EXTERNAL_URL") or "https://px-only.onrender.com"
+        webhook_url = f"{BASE_URL}{WEBHOOK_PATH}"
 
-    webhook_url = f"{BASE_URL}{WEBHOOK_PATH}"
+        webhook_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
+        webhook_handler.register(app, path=WEBHOOK_PATH)
+        setup_application(app, dp, bot=bot)
 
-    # Регистрируем обработчик обновлений от Telegram
-    webhook_handler = SimpleRequestHandler(
-        dispatcher=dp,
-        bot=bot,
-    )
-    webhook_handler.register(app, path=WEBHOOK_PATH)
+        # === ЗАПУСК СЕРВЕРА ===
+        runner = web.AppRunner(app)
+        await runner.setup()
+        port = int(os.getenv("PORT", 8080))
+        site = web.TCPSite(runner, '0.0.0.0', port)
+        await site.start()
 
-    # Автоматически настраиваем startup/shutdown
-    setup_application(app, dp, bot=bot)
+        logging.info(f"🚀 Сервер запущен на порту {port}")
+        logging.info(f"✅ Webhook: {webhook_url}")
+        logging.info("✅ WebApp доступен по /static/index.html")
 
-    # === 3. Запуск сервера ===
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', int(os.getenv("PORT", 8080)))
-    await site.start()
-
-    logging.info(f"🚀 Сервер запущен на порту {os.getenv('PORT', 8080)}")
-    logging.info(f"✅ Webhook будет установлен на: {webhook_url}")
-
-    # Держим сервер запущенным
-    await asyncio.Event().wait()   # бесконечное ожидание
+        # Держим сервер живым
+        try:
+            while True:
+                await asyncio.sleep(3600)
+        finally:
+            await runner.cleanup()
 
 
 if __name__ == "__main__":
