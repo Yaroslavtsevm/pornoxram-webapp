@@ -2,37 +2,30 @@ import asyncio
 import logging
 import json
 import os
-from urllib.parse import quote
 
 import aiosqlite
 from aiogram import Bot, Dispatcher, Router, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
-from aiogram.types import (
-    Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, WebAppData
-)
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 from aiogram.utils.web_app import safe_parse_webapp_init_data
 from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 # ====================== НАСТРОЙКИ ======================
 BOT_TOKEN = os.getenv("BOT_TOKEN", "6162146726:AAGjWYQlcPXXp4sdh5BkfIRCiHDhBqNaTFs")
-PERSONAL_USERNAME = os.getenv("PERSONAL_USERNAME", "PX_MrM")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://px-only.onrender.com/static/index.html")
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "my-super-secret-px-2026")
 ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "1423028519"))
 
 DB_NAME = "database.db"
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://px-only.onrender.com/static/index.html")
-
-# Secret token для защиты webhook (рекомендуется задать)
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "my-super-secret-px-2026")
 
 logging.basicConfig(level=logging.INFO)
 
 # ====================== БАЗА ДАННЫХ ======================
 async def init_db():
     async with aiosqlite.connect(DB_NAME) as db:
-        # Звёзды
         await db.execute("""
             CREATE TABLE IF NOT EXISTS stars (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -42,14 +35,12 @@ async def init_db():
                 description TEXT
             )
         """)
-        # Категории
         await db.execute("""
             CREATE TABLE IF NOT EXISTS categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL
             )
         """)
-        # Обычный контент
         await db.execute("""
             CREATE TABLE IF NOT EXISTS content (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,7 +53,6 @@ async def init_db():
                 FOREIGN KEY(category_id) REFERENCES categories(id)
             )
         """)
-        # Платный контент
         await db.execute("""
             CREATE TABLE IF NOT EXISTS paid_content (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,7 +61,6 @@ async def init_db():
                 caption TEXT
             )
         """)
-        # Анонимные комментарии
         await db.execute("""
             CREATE TABLE IF NOT EXISTS comments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,6 +72,19 @@ async def init_db():
             )
         """)
         await db.commit()
+
+
+# ====================== ПОМОЩНИК ДЛЯ FILE_URL ======================
+async def get_file_url(file_id: str) -> str | None:
+    """Возвращает прямую ссылку на файл через Telegram Bot API"""
+    if not file_id:
+        return None
+    try:
+        file_info = await bot.get_file(file_id)
+        return f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+    except Exception as e:
+        logging.error(f"get_file_url error for {file_id}: {e}")
+        return None
 
 
 # ====================== WEBAPP API ======================
@@ -103,7 +105,10 @@ async def api_handler(request, table_name):
                 items = [dict(r) async for r in cur]
         elif table_name == "paid":
             async with db.execute("SELECT id, type, file_id, caption FROM paid_content ORDER BY id DESC") as cur:
-                items = [dict(r) async for r in cur]
+                rows = [dict(r) async for r in cur]
+            for row in rows:
+                row["file_url"] = await get_file_url(row["file_id"])
+            items = rows
         else:
             items = []
     return web.json_response(items)
@@ -120,11 +125,41 @@ async def api_comments(request):
     async with aiosqlite.connect(DB_NAME) as db:
         db.row_factory = aiosqlite.Row
         async with db.execute(
-            "SELECT nickname, text, created_at FROM comments WHERE content_id=? ORDER BY created_at DESC",
+            "SELECT nickname, text, created_at as time FROM comments WHERE content_id=? ORDER BY created_at DESC",
             (content_id,)
         ) as cur:
             comments = [dict(r) async for r in cur]
     return web.json_response(comments)
+
+
+async def api_content(request):
+    try:
+        data = await request.post()
+        safe_parse_webapp_init_data(token=BOT_TOKEN, init_data=data.get("_auth"))
+        star_id = data.get("star_id")
+        category_id = data.get("category_id")
+    except Exception:
+        return web.json_response({"error": "Unauthorized"}, status=401)
+
+    if not star_id and not category_id:
+        return web.json_response([])
+
+    async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
+        if star_id:
+            query = "SELECT type, file_id, caption FROM content WHERE star_id = ?"
+            params = (int(star_id),)
+        else:
+            query = "SELECT type, file_id, caption FROM content WHERE category_id = ?"
+            params = (int(category_id),)
+
+        async with db.execute(query, params) as cur:
+            rows = [dict(r) async for r in cur]
+
+        for row in rows:
+            row["file_url"] = await get_file_url(row["file_id"])
+
+        return web.json_response(rows)
 
 
 # ====================== БОТ ======================
@@ -143,7 +178,7 @@ async def cmd_start(message: Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="Открыть PX Menu", web_app=WebAppInfo(url=WEBAPP_URL))
     ]])
-    await message.answer("Добро пожаловать в PX", reply_markup=kb)
+    await message.answer("Добро пожаловать в PX 🔥", reply_markup=kb)
 
 
 @router.message(F.web_app_data)
@@ -167,7 +202,6 @@ async def webapp_data_handler(message: Message):
         logging.error(f"WebApp data error: {e}")
 
 
-# ====================== АВТО-ЧТЕНИЕ ИЗ КАНАЛА ======================
 @router.channel_post()
 async def channel_post_handler(message: Message):
     if not message.photo and not message.video:
@@ -191,7 +225,7 @@ async def channel_post_handler(message: Message):
         async with aiosqlite.connect(DB_NAME) as db:
             db.row_factory = aiosqlite.Row
 
-            # === Платный контент ===
+            # Платный контент
             if any(word in text_lower for word in ["платное", "#paid", "#exclusive", "exclusive", "только для подписки"]):
                 await db.execute(
                     "INSERT INTO paid_content (type, file_id, caption) VALUES (?, ?, ?)",
@@ -201,12 +235,10 @@ async def channel_post_handler(message: Message):
                 logging.info(f"Сохранён платный контент: {media_type}")
                 return
 
-            # === Звезда по хэштегу ===
+            # Звезда
             star_id = None
             for tag in hashtags:
-                async with db.execute(
-                    "SELECT id FROM stars WHERE hashtag = ? COLLATE NOCASE", (tag,)
-                ) as cur:
+                async with db.execute("SELECT id FROM stars WHERE hashtag = ? COLLATE NOCASE", (tag,)) as cur:
                     row = await cur.fetchone()
                     if row:
                         star_id = row["id"]
@@ -221,12 +253,10 @@ async def channel_post_handler(message: Message):
                 logging.info(f"Сохранён контент звезды (star_id={star_id})")
                 return
 
-            # === Категория по хэштегу ===
+            # Категория
             cat_id = None
             for tag in hashtags:
-                async with db.execute(
-                    "SELECT id FROM categories WHERE name = ? COLLATE NOCASE", (tag,)
-                ) as cur:
+                async with db.execute("SELECT id FROM categories WHERE name = ? COLLATE NOCASE", (tag,)) as cur:
                     row = await cur.fetchone()
                     if row:
                         cat_id = row["id"]
@@ -239,7 +269,6 @@ async def channel_post_handler(message: Message):
                 )
                 await db.commit()
                 logging.info(f"Сохранён контент категории (cat_id={cat_id})")
-                return
 
     except Exception as e:
         logging.error(f"Ошибка при обработке channel_post: {e}")
@@ -256,8 +285,9 @@ async def main():
     app.router.add_post('/api/categories', lambda r: api_handler(r, "categories"))
     app.router.add_post('/api/paid', lambda r: api_handler(r, "paid"))
     app.router.add_post('/api/comments', api_comments)
+    app.router.add_post('/api/content', api_content)   # ← Новый роут
 
-    # Раздача статики
+    # Статика
     static_dir = os.path.join(os.getcwd(), "static")
     if os.path.exists(static_dir):
         app.router.add_static('/static/', static_dir, name='static')
@@ -265,12 +295,11 @@ async def main():
     else:
         logging.warning("Папка static не найдена!")
 
-    # Webhook настройки
+    # Webhook
     WEBHOOK_PATH = "/webhook"
     BASE_URL = os.getenv("RENDER_EXTERNAL_URL") or "https://px-only.onrender.com"
     webhook_url = f"{BASE_URL}{WEBHOOK_PATH}"
 
-    # Настройка обработчика webhook с секретным токеном
     webhook_handler = SimpleRequestHandler(
         dispatcher=dp,
         bot=bot,
@@ -279,7 +308,6 @@ async def main():
     webhook_handler.register(app, path=WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
 
-    # Запуск сервера
     runner = web.AppRunner(app)
     await runner.setup()
     port = int(os.getenv("PORT", 8080))
@@ -289,7 +317,6 @@ async def main():
     logging.info(f"🚀 Сервер запущен на порту {port}")
     logging.info(f"✅ Webhook URL: {webhook_url}")
 
-    # Устанавливаем webhook
     await bot.set_webhook(
         url=webhook_url,
         secret_token=WEBHOOK_SECRET,
