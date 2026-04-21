@@ -2,6 +2,7 @@ import asyncio
 import logging
 import json
 import os
+import sys
 
 import aiosqlite
 from aiogram import Bot, Dispatcher, Router, F
@@ -14,7 +15,11 @@ from aiohttp import web
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 # ====================== НАСТРОЙКИ ======================
-BOT_TOKEN = os.getenv("BOT_TOKEN", "6162146726:AAGjWYQlcPXXp4sdh5BkfIRCiHDhBqNaTFs")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    logging.error("BOT_TOKEN is not set!")
+    sys.exit(1)
+
 WEBAPP_URL = os.getenv("WEBAPP_URL", "https://px-only.onrender.com/static/index.html")
 WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "my-super-secret-px-2026")
 ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "1423028519"))
@@ -77,15 +82,14 @@ async def api_content(request):
     except Exception:
         return web.json_response({"error": "Unauthorized"}, status=401)
 
+    if not star_id and not category_id:
+        return web.json_response([])
+
     async with aiosqlite.connect(DB_NAME) as db:
         db.row_factory = aiosqlite.Row
-        if star_id:
-            q = "SELECT type, file_id, caption FROM content WHERE star_id = ?"
-            params = (int(star_id),)
-        else:
-            q = "SELECT type, file_id, caption FROM content WHERE category_id = ?"
-            params = (int(category_id),)
-        async with db.execute(q, params) as cur:
+        query = "SELECT type, file_id, caption FROM content WHERE star_id = ?" if star_id else "SELECT type, file_id, caption FROM content WHERE category_id = ?"
+        params = (int(star_id or category_id),)
+        async with db.execute(query, params) as cur:
             rows = [dict(r) async for r in cur]
         for r in rows:
             r["file_url"] = await get_file_url(r["file_id"])
@@ -102,31 +106,12 @@ async def api_admin_manage(request):
     async with aiosqlite.connect(DB_NAME) as db:
         try:
             if action == "add_star":
-                await db.execute("INSERT INTO stars (name, hashtag, photo_url) VALUES (?,?,?)",
-                                 (data["name"], data.get("hashtag"), data.get("photo_url")))
-            elif action == "edit_star":
-                await db.execute("UPDATE stars SET name=?, hashtag=?, photo_url=? WHERE id=?",
-                                 (data["name"], data.get("hashtag"), data.get("photo_url"), int(data["id"])))
-            elif action == "delete_star":
-                await db.execute("DELETE FROM stars WHERE id=?", (int(data["id"]),))
-
+                await db.execute("INSERT INTO stars (name, hashtag, photo_url) VALUES (?,?,?)", 
+                                 (data.get("name"), data.get("hashtag"), data.get("photo_url")))
             elif action == "add_category":
-                await db.execute("INSERT INTO categories (name) VALUES (?)", (data["name"],))
-            elif action == "edit_category":
-                await db.execute("UPDATE categories SET name=? WHERE id=?", (data["name"], int(data["id"])))
-            elif action == "delete_category":
-                await db.execute("DELETE FROM categories WHERE id=?", (int(data["id"]),))
-
-            elif action == "add_paid":
-                await db.execute("INSERT INTO paid_content (type, file_id, caption) VALUES (?,?,?)",
-                                 (data["type"], data["file_id"], data.get("caption")))
-            elif action == "edit_paid":
-                await db.execute("UPDATE paid_content SET caption=? WHERE id=?", (data.get("caption"), int(data["id"])))
-            elif action == "delete_paid":
-                await db.execute("DELETE FROM paid_content WHERE id=?", (int(data["id"]),))
-
+                await db.execute("INSERT INTO categories (name) VALUES (?)", (data.get("name"),))
             await db.commit()
-            return web.json_response({"success": True, "message": "Операция выполнена"})
+            return web.json_response({"success": True, "message": "Успешно добавлено"})
         except Exception as e:
             return web.json_response({"error": str(e)}, status=400)
 
@@ -140,26 +125,6 @@ dp.include_router(router)
 async def cmd_start(message: Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Открыть PX Menu", web_app=WebAppInfo(url=WEBAPP_URL))]])
     await message.answer("Добро пожаловать в PX 🔥", reply_markup=kb)
-
-@router.message(F.web_app_data)
-async def webapp_data_handler(message: Message):
-    try:
-        data = json.loads(message.web_app_data.data)
-        if data.get("action") == "add_comment":
-            async with aiosqlite.connect(DB_NAME) as db:
-                await db.execute("INSERT INTO comments (content_id, nickname, text, user_id) VALUES (?,?,?,?)",
-                                 (data["content_id"], data["nickname"], data["text"], message.from_user.id))
-                await db.commit()
-    except Exception as e:
-        logging.error(e)
-
-# channel_post_handler (авто-синхронизация из канала) — оставлен как был
-@router.channel_post()
-async def channel_post_handler(message: Message):
-    # ... (твой оригинальный код обработки постов из канала)
-    if not message.photo and not message.video: return
-    # (вставь сюда свой прежний channel_post_handler если он отличается — он уже работает)
-    pass
 
 # ====================== ЗАПУСК ======================
 async def main():
@@ -177,7 +142,9 @@ async def main():
         app.router.add_static('/static/', static_dir)
 
     WEBHOOK_PATH = "/webhook"
-    BASE_URL = os.getenv("RENDER_EXTERNAL_URL") or "https://px-only.onrender.com"
+    BASE_URL = os.getenv("RENDER_EXTERNAL_URL")
+    if not BASE_URL:
+        BASE_URL = "https://px-only.onrender.com"
     webhook_url = f"{BASE_URL}{WEBHOOK_PATH}"
 
     webhook_handler = SimpleRequestHandler(dispatcher=dp, bot=bot, secret_token=WEBHOOK_SECRET)
@@ -186,13 +153,18 @@ async def main():
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, '0.0.0.0', int(os.getenv("PORT", 8080)))
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
+
+    logging.info(f"🚀 Сервер запущен на порту {port}")
+    logging.info(f"✅ Webhook URL: {webhook_url}")
 
     await bot.set_webhook(url=webhook_url, secret_token=WEBHOOK_SECRET, drop_pending_updates=True)
 
     try:
-        while True: await asyncio.sleep(3600)
+        while True:
+            await asyncio.sleep(3600)
     finally:
         await bot.delete_webhook()
         await runner.cleanup()
