@@ -10,19 +10,22 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import Command
 from aiogram.types import (
-    Message, InlineKeyboardMarkup, InlineKeyboardButton,
-    WebAppInfo, WebAppData
+    Message, InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, WebAppData
 )
 from aiogram.utils.web_app import safe_parse_webapp_init_data
 from aiohttp import web
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
 # ====================== НАСТРОЙКИ ======================
-BOT_TOKEN = "6162146726:AAGjWYQlcPXXp4sdh5BkfIRCiHDhBqNaTFs"                    # ← Замени!
-PERSONAL_USERNAME = "PX_MrM"              # ← твой ник без @
-ADMIN_USER_ID = 1423028519                        # ← твой Telegram ID
+BOT_TOKEN = os.getenv("BOT_TOKEN", "6162146726:AAGjWYQlcPXXp4sdh5BkfIRCiHDhBqNaTFs")
+PERSONAL_USERNAME = os.getenv("PERSONAL_USERNAME", "PX_MrM")
+ADMIN_USER_ID = int(os.getenv("ADMIN_USER_ID", "1423028519"))
 
 DB_NAME = "database.db"
-WEBAPP_URL = "https://px-only.onrender.com/static/index.html"   # ← Замени после деплоя!
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://px-only.onrender.com/static/index.html")
+
+# Secret token для защиты webhook (рекомендуется задать)
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "my-super-secret-px-2026")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -91,15 +94,16 @@ async def api_handler(request, table_name):
         return web.json_response({"error": "Unauthorized"}, status=401)
 
     async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
         if table_name == "stars":
             async with db.execute("SELECT id, name, hashtag, photo_url FROM stars ORDER BY name") as cur:
-                items = [dict(id=r[0], name=r[1], hashtag=r[2], photo_url=r[3]) async for r in cur]
+                items = [dict(r) async for r in cur]
         elif table_name == "categories":
             async with db.execute("SELECT id, name FROM categories ORDER BY name") as cur:
-                items = [dict(id=r[0], name=r[1]) async for r in cur]
+                items = [dict(r) async for r in cur]
         elif table_name == "paid":
-            async with db.execute("SELECT id, type, file_id, caption FROM paid_content") as cur:
-                items = [dict(id=r[0], type=r[1], file_id=r[2], caption=r[3]) async for r in cur]
+            async with db.execute("SELECT id, type, file_id, caption FROM paid_content ORDER BY id DESC") as cur:
+                items = [dict(r) async for r in cur]
         else:
             items = []
     return web.json_response(items)
@@ -114,11 +118,12 @@ async def api_comments(request):
         return web.json_response({"error": "Unauthorized"}, status=401)
 
     async with aiosqlite.connect(DB_NAME) as db:
+        db.row_factory = aiosqlite.Row
         async with db.execute(
             "SELECT nickname, text, created_at FROM comments WHERE content_id=? ORDER BY created_at DESC",
             (content_id,)
         ) as cur:
-            comments = [dict(nickname=r[0], text=r[1], time=r[2]) async for r in cur]
+            comments = [dict(r) async for r in cur]
     return web.json_response(comments)
 
 
@@ -132,12 +137,13 @@ dp = Dispatcher()
 router = Router()
 dp.include_router(router)
 
+
 @router.message(Command("start"))
 async def cmd_start(message: Message):
     kb = InlineKeyboardMarkup(inline_keyboard=[[
         InlineKeyboardButton(text="Открыть PX Menu", web_app=WebAppInfo(url=WEBAPP_URL))
     ]])
-    await message.answer("PX", reply_markup=kb)
+    await message.answer("Добро пожаловать в PX", reply_markup=kb)
 
 
 @router.message(F.web_app_data)
@@ -167,60 +173,76 @@ async def channel_post_handler(message: Message):
     if not message.photo and not message.video:
         return
 
-    text = (message.caption or "").lower()
-    hashtags = [tag for tag in text.split() if tag.startswith("#")]
+    try:
+        caption = message.caption or ""
+        text_lower = caption.lower()
+        hashtags = [tag for tag in text_lower.split() if tag.startswith("#")]
 
-    file_id = None
-    media_type = None
-    caption = message.caption or ""
+        file_id = None
+        media_type = None
 
-    if message.photo:
-        file_id = message.photo[-1].file_id
-        media_type = "photo"
-    elif message.video:
-        file_id = message.video.file_id
-        media_type = "video"
+        if message.photo:
+            file_id = message.photo[-1].file_id
+            media_type = "photo"
+        elif message.video:
+            file_id = message.video.file_id
+            media_type = "video"
 
-    async with aiosqlite.connect(DB_NAME) as db:
-        # Платное
-        if any(word in text for word in ["платное", "платн", "#paid", "#exclusive"]):
-            await db.execute(
-                "INSERT INTO paid_content (type, file_id, caption) VALUES (?, ?, ?)",
-                (media_type, file_id, caption)
-            )
-            await db.commit()
-            return
+        async with aiosqlite.connect(DB_NAME) as db:
+            db.row_factory = aiosqlite.Row
 
-        # Звезда
-        star_id = None
-        for tag in hashtags:
-            async with db.execute("SELECT id FROM stars WHERE hashtag = ? COLLATE NOCASE", (tag,)) as cur:
-                row = await cur.fetchone()
-                if row:
-                    star_id = row[0]
-                    break
-        if star_id:
-            await db.execute(
-                "INSERT INTO content (type, file_id, caption, star_id) VALUES (?, ?, ?, ?)",
-                (media_type, file_id, caption, star_id)
-            )
-            await db.commit()
-            return
+            # === Платный контент ===
+            if any(word in text_lower for word in ["платное", "#paid", "#exclusive", "exclusive", "только для подписки"]):
+                await db.execute(
+                    "INSERT INTO paid_content (type, file_id, caption) VALUES (?, ?, ?)",
+                    (media_type, file_id, caption)
+                )
+                await db.commit()
+                logging.info(f"Сохранён платный контент: {media_type}")
+                return
 
-        # Категория
-        cat_id = None
-        for tag in hashtags:
-            async with db.execute("SELECT id FROM categories WHERE name = ? COLLATE NOCASE", (tag,)) as cur:
-                row = await cur.fetchone()
-                if row:
-                    cat_id = row[0]
-                    break
-        if cat_id:
-            await db.execute(
-                "INSERT INTO content (type, file_id, caption, category_id) VALUES (?, ?, ?, ?)",
-                (media_type, file_id, caption, cat_id)
-            )
-            await db.commit()
+            # === Звезда по хэштегу ===
+            star_id = None
+            for tag in hashtags:
+                async with db.execute(
+                    "SELECT id FROM stars WHERE hashtag = ? COLLATE NOCASE", (tag,)
+                ) as cur:
+                    row = await cur.fetchone()
+                    if row:
+                        star_id = row["id"]
+                        break
+
+            if star_id:
+                await db.execute(
+                    "INSERT INTO content (type, file_id, caption, star_id) VALUES (?, ?, ?, ?)",
+                    (media_type, file_id, caption, star_id)
+                )
+                await db.commit()
+                logging.info(f"Сохранён контент звезды (star_id={star_id})")
+                return
+
+            # === Категория по хэштегу ===
+            cat_id = None
+            for tag in hashtags:
+                async with db.execute(
+                    "SELECT id FROM categories WHERE name = ? COLLATE NOCASE", (tag,)
+                ) as cur:
+                    row = await cur.fetchone()
+                    if row:
+                        cat_id = row["id"]
+                        break
+
+            if cat_id:
+                await db.execute(
+                    "INSERT INTO content (type, file_id, caption, category_id) VALUES (?, ?, ?, ?)",
+                    (media_type, file_id, caption, cat_id)
+                )
+                await db.commit()
+                logging.info(f"Сохранён контент категории (cat_id={cat_id})")
+                return
+
+    except Exception as e:
+        logging.error(f"Ошибка при обработке channel_post: {e}")
 
 
 # ====================== ЗАПУСК ======================
@@ -229,13 +251,13 @@ async def main():
 
     app = web.Application()
 
-    # API-роуты
+    # API-роуты для WebApp
     app.router.add_post('/api/stars', lambda r: api_handler(r, "stars"))
     app.router.add_post('/api/categories', lambda r: api_handler(r, "categories"))
     app.router.add_post('/api/paid', lambda r: api_handler(r, "paid"))
     app.router.add_post('/api/comments', api_comments)
 
-    # Раздача статики (если есть папка static)
+    # Раздача статики
     static_dir = os.path.join(os.getcwd(), "static")
     if os.path.exists(static_dir):
         app.router.add_static('/static/', static_dir, name='static')
@@ -243,14 +265,17 @@ async def main():
     else:
         logging.warning("Папка static не найдена!")
 
-    # Webhook aiogram
-    from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-
-    WEBHOOK_PATH = f"/bot/{BOT_TOKEN}"
+    # Webhook настройки
+    WEBHOOK_PATH = "/webhook"
     BASE_URL = os.getenv("RENDER_EXTERNAL_URL") or "https://px-only.onrender.com"
     webhook_url = f"{BASE_URL}{WEBHOOK_PATH}"
 
-    webhook_handler = SimpleRequestHandler(dispatcher=dp, bot=bot)
+    # Настройка обработчика webhook с секретным токеном
+    webhook_handler = SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot,
+        secret_token=WEBHOOK_SECRET
+    )
     webhook_handler.register(app, path=WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
 
@@ -262,13 +287,22 @@ async def main():
     await site.start()
 
     logging.info(f"🚀 Сервер запущен на порту {port}")
-    logging.info(f"✅ Webhook: {webhook_url}")
+    logging.info(f"✅ Webhook URL: {webhook_url}")
 
-    # Держим процесс живым
+    # Устанавливаем webhook
+    await bot.set_webhook(
+        url=webhook_url,
+        secret_token=WEBHOOK_SECRET,
+        drop_pending_updates=True,
+        allowed_updates=["message", "channel_post", "web_app_data"]
+    )
+    logging.info("✅ Webhook успешно установлен")
+
     try:
         while True:
             await asyncio.sleep(3600)
     finally:
+        await bot.delete_webhook()
         await runner.cleanup()
 
 
