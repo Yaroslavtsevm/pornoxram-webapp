@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PornoXram</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+        body { 
+            background: linear-gradient(180deg, #1a0033 0%, #000000 100%); 
+            color: white; 
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .header-text { 
+            font-family: 'Playfair Display', serif; 
+            font-size: 2.8rem; 
+            background: linear-gradient(90deg, #ff00aa, #aa00ff, #00ffff); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+        .tab-active { border-bottom: 4px solid #ff00aa; color: #ff00aa; }
+        .media-card:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255,0,170,0.7); }
+        .admin-btn { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+    </style>
+</head>
+<body class="min-h-screen pb-32">
+    <div class="max-w-7xl mx-auto px-4 pt-6">
+        <!-- Шапка -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 id="main-title" class="header-text">PornoXram</h1>
+            
+            <button onclick="toggleLanguage()" id="lang-switch"
+                    class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-3xl text-sm font-medium transition-all">
+                <span id="lang-flag">🇷🇺</span>
+                <span id="lang-text">Русский</span>
+            </button>
+        </div>
+
+        <!-- Поиск -->
+        <div class="mb-6">
+            <input id="search-input" type="text" 
+                   placeholder="Поиск..." 
+                   class="w-full bg-zinc-900 rounded-3xl px-6 py-4 text-lg outline-none focus:ring-2 focus:ring-pink-500">
+        </div>
+
+        <!-- Табы -->
+        <div class="flex gap-8 border-b border-zinc-700 mb-8">
+            <button onclick="switchTab(0)" id="tab-models" class="tab-active pb-3 px-8 text-2xl font-medium">Модели</button>
+            <button onclick="switchTab(1)" id="tab-categories" class="pb-3 px-8 text-2xl font-medium">Категории</button>
+            
+            <button onclick="toggleAdminPanel()" id="admin-btn" 
+                    class="ml-auto admin-btn hidden bg-gradient-to-r from-pink-600 to-purple-600 px-8 py-2 rounded-3xl text-white font-bold text-lg">
+                👑 Админ
+            </button>
+        </div>
+
+        <!-- Основной контент -->
+        <div id="main-content" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+
+        <!-- Пагинация -->
+        <div id="pagination" class="flex justify-center gap-6 mt-12 text-xl"></div>
+    </div>
+
+    <!-- Кнопка спонсирования -->
+    <a href="https://t.me/PX_MrM" target="_blank"
+       class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-10 py-5 rounded-3xl shadow-2xl flex items-center gap-4 text-xl font-bold z-50">
+        <span class="text-3xl">⭐</span>
+        <div>
+            <span id="sponsor-text">Спонсирование</span>
+            <div class="text-sm opacity-90">@PX_MrM • Telegram Stars</div>
+        </div>
+    </a>
+
+    <!-- АДМИН ПАНЕЛЬ -->
+    <div id="admin-panel" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4">
+        <div class="bg-zinc-900 rounded-3xl w-full max-w-6xl max-h-[94vh] overflow-hidden">
+            <div class="p-6 border-b border-zinc-700 flex justify-between items-center bg-zinc-950">
+                <h2 id="admin-title" class="text-3xl font-bold">👑 Админ-панель</h2>
+                <button onclick="toggleAdminPanel()" class="text-4xl text-pink-400 hover:text-pink-300">✕</button>
+            </div>
+            
+            <div class="p-6 overflow-auto" style="max-height: calc(94vh - 80px);">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Добавить модель -->
+                    <div class="bg-zinc-800 rounded-3xl p-6">
+                        <h3 class="text-2xl mb-4 text-pink-400">Добавить модель</h3>
+                        <form id="add-model-form" class="space-y-4">
+                            <input type="text" id="model-name-ru" placeholder="Название (RU)" class="w-full bg-zinc-900 p-4 rounded-2xl">
+                            <input type="text" id="model-name-en" placeholder="Название (EN)" class="w-full bg-zinc-900 p-4 rounded-2xl">
+                            <input type="file" id="model-cover" accept="image/*" class="w-full bg-zinc-900 p-4 rounded-2xl">
+                            <button type="submit" class="w-full bg-gradient-to-r from-pink-600 to-purple-600 py-4 rounded-3xl font-bold">Добавить модель</button>
+                        </form>
+                    </div>
+
+                    <!-- Добавить категорию -->
+                    <div class="bg-zinc-800 rounded-3xl p-6">
+                        <h3 class="text-2xl mb-4 text-pink-400">Добавить категорию</h3>
+                        <form id="add-category-form" class="space-y-4">
+                            <input type="text" id="category-hashtag" placeholder="#хэштег" class="w-full bg-zinc-900 p-4 rounded-2xl">
+                            <button type="submit" class="w-full bg-gradient-to-r from-pink-600 to-purple-600 py-4 rounded-3xl font-bold">Добавить категорию</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Управление контентом -->
+                <div class="mt-10">
+                    <h3 class="text-2xl mb-6">Управление контентом</h3>
+                    <div id="admin-list" class="space-y-10"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 0;           // 0 = модели, 1 = категории
+        let currentPage = 1;
+        let currentSearch = '';
+        let isAdminUser = false;
+        let currentLang = 'ru';       // 'ru' или 'en'
+
+        const translations = {
+            ru: {
+                title: "PornoXram",
+                searchPlaceholder: "Поиск...",
+                models: "Модели",
+                categories: "Категории",
+                admin: "👑 Админ",
+                sponsor: "Спонсирование",
+                nothingFound: "Ничего не найдено",
+                prev: "←",
+                next: "→",
+                addModel: "Добавить модель",
+                addCategory: "Добавить категорию",
+                manageContent: "Управление контентом"
+            },
+            en: {
+                title: "PornoXram",
+                searchPlaceholder: "Search...",
+                models: "Models",
+                categories: "Categories",
+                admin: "👑 Admin",
+                sponsor: "Sponsorship",
+                nothingFound: "Nothing found",
+                prev: "←",
+                next: "→",
+                addModel: "Add Model",
+                addCategory: "Add Category",
+                manageContent: "Content Management"
+            }
+        };
+
+        function t(key) {
+            return translations[currentLang][key] || key;
+        }
+
+        function applyLanguage() {
+            document.getElementById('main-title').textContent = t('title');
+            document.getElementById('search-input').placeholder = t('searchPlaceholder');
+            document.getElementById('tab-models').textContent = t('models');
+            document.getElementById('tab-categories').textContent = t('categories');
+            document.getElementById('admin-btn').innerHTML = t('admin');
+            document.getElementById('sponsor-text').textContent = t('sponsor');
+            document.getElementById('admin-title').textContent = '👑 ' + (currentLang === 'ru' ? 'Админ-панель' : 'Admin Panel');
+
+            // Обновляем переключатель языка
+            document.getElementById('lang-flag').textContent = currentLang === 'ru' ? '🇷🇺' : '🇬🇧';
+            document.getElementById('lang-text').textContent = currentLang === 'ru' ? 'Русский' : 'English';
+
+            fetchAndRender();
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'ru' ? 'en' : 'ru';
+            localStorage.setItem('preferredLang', currentLang);
+            applyLanguage();
+        }
+
+        function loadSavedLanguage() {
+            const saved = localStorage.getItem('preferredLang');
+            if (saved) currentLang = saved;
+        }
+
+        async function checkAdmin() {
+            const initData = window.Telegram?.WebApp?.initData || '';
+            if (!initData) return;
+            const res = await fetch('/api/check_admin', {
+                headers: { 'X-Telegram-Init-Data': initData }
+            });
+            const data = await res.json();
+            isAdminUser = data.is_admin;
+            if (isAdminUser) document.getElementById('admin-btn').classList.remove('hidden');
+        }
+
+        async function loadData() {
+            currentSearch = document.getElementById('search-input').value.trim();
+            currentPage = 1;
+            await fetchAndRender();
+        }
+
+        async function fetchAndRender() {
+            const params = new URLSearchParams({ page: currentPage, limit: 12, search: currentSearch });
+            const endpoint = currentTab === 0 ? '/api/models' : '/api/categories';
+            const res = await fetch(`${endpoint}?${params}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            renderItems(data.items);
+            renderPagination(data.pages);
+        }
+
+        function renderItems(items) {
+            const container = document.getElementById('main-content');
+            let html = '';
+            items.forEach(item => {
+                const title = currentTab === 0 
+                    ? (currentLang === 'ru' ? item.name_ru : (item.name_en || item.name_ru)) 
+                    : item.hashtag;
+                const image = item.cover_url || (item.media && item.media[0] && item.media[0].url) || 
+                             'https://via.placeholder.com/400x300/1a0033/ffffff?text=No+Image';
+                
+                html += `
+                    <div class="media-card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer" onclick="showDetail(${item.id})">
+                        <img src="${image}" class="w-full aspect-[4/3] object-cover" alt="${title}">
+                        <div class="p-4"><p class="font-medium text-lg line-clamp-2">${title}</p></div>
+                    </div>`;
+            });
+            container.innerHTML = html || `<p class="col-span-full text-center text-gray-400 py-12">${t('nothingFound')}</p>`;
+        }
+
+        function renderPagination(pages) {
+            const container = document.getElementById('pagination');
+            if (pages <= 1) { container.innerHTML = ''; return; }
+            container.innerHTML = `
+                <button onclick="changePage(${currentPage-1})" class="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-3xl">${t('prev')}</button>
+                <span class="px-10 py-3">${currentPage} / ${pages}</span>
+                <button onclick="changePage(${currentPage+1})" class="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-3xl">${t('next')}</button>
+            `;
+        }
+
+        function changePage(page) {
+            if (page < 1) return;
+            currentPage = page;
+            fetchAndRender();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-models').classList.toggle('tab-active', tab === 0);
+            document.getElementById('tab-categories').classList.toggle('tab-active', tab === 1);
+            currentPage = 1;
+            fetchAndRender();
+        }
+
+        function toggleAdminPanel() {
+            const panel = document.getElementById('admin-panel');
+            panel.classList.toggle('hidden');
+            if (!panel.classList.contains('hidden')) {
+                renderAdminList();
+            }
+        }
+
+        async function renderAdminList() {
+            const container = document.getElementById('admin-list');
+            let html = `<h4 class="text-2xl mb-6">${currentTab === 0 ? (currentLang==='ru'?'Модели':'Models') : (currentLang==='ru'?'Категории':'Categories')}</h4>`;
+
+            const endpoint = currentTab === 0 ? '/api/models?limit=100' : '/api/categories?limit=100';
+            const res = await fetch(endpoint);
+            const data = await res.json();
+            const items = data.items || [];
+
+            items.forEach(item => {
+                const title = currentTab === 0 ? item.name_ru : item.hashtag;
+                const id = item.id;
+                const mediaList = item.media || [];
+
+                html += `
+                    <div class="bg-zinc-800 rounded-3xl p-6">
+                        <div class="flex justify-between mb-4">
+                            <input type="text" id="title-${id}" value="${title}" class="bg-zinc-900 p-3 rounded-2xl w-full text-lg">
+                            <div class="flex gap-2 ml-4">
+                                <button onclick="saveTitle(${id})" class="bg-emerald-600 px-5 py-2 rounded-2xl text-sm">Сохранить</button>
+                                <button onclick="deleteItem(${id})" class="bg-red-600 px-5 py-2 rounded-2xl text-sm">Удалить</button>
+                            </div>
+                        </div>
+
+                        <div class="mb-4 flex gap-3">
+                            <select id="media-type-${id}" class="bg-zinc-900 p-3 rounded-2xl">
+                                <option value="image">Фото</option>
+                                <option value="video">Видео</option>
+                            </select>
+                            <input type="file" id="media-file-${id}" accept="image/*,video/*" class="bg-zinc-900 p-3 rounded-2xl flex-1">
+                            <button onclick="addMedia(${id})" class="bg-pink-600 px-6 py-3 rounded-2xl">Добавить медиа</button>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-4">
+                            ${mediaList.map(m => `
+                                <div class="relative bg-zinc-950 rounded-2xl overflow-hidden">
+                                    ${m.type === 'video' ? 
+                                        `<video src="${m.url}" class="w-full h-40 object-cover" muted></video>` : 
+                                        `<img src="${m.url}" class="w-full h-40 object-cover">`}
+                                    <button onclick="deleteMedia(${id}, ${m.id})" 
+                                            class="absolute top-2 right-2 bg-red-600 text-white text-xs px-3 py-1 rounded-xl">Удалить</button>
+                                </div>
+                            `).join('') || '<p class="col-span-3 text-gray-400 text-center py-8">Медиа отсутствует</p>'}
+                        </div>
+                    </div>`;
+            });
+
+            container.innerHTML = html;
+        }
+
+        async function saveTitle(id) {
+            const newTitle = document.getElementById(`title-${id}`).value.trim();
+            if (!newTitle) return;
+            const formData = new FormData();
+            formData.append('initData', window.Telegram?.WebApp?.initData || '');
+            if (currentTab === 0) formData.append('name_ru', newTitle);
+            else formData.append('hashtag', newTitle);
+
+            const endpoint = currentTab === 0 ? `/api/models/${id}` : `/api/categories/${id}`;
+            await fetch(endpoint, { method: 'PATCH', body: formData });
+            alert(currentLang === 'ru' ? 'Название обновлено' : 'Title updated');
+            renderAdminList();
+        }
+
+        async function deleteItem(id) {
+            if (!confirm(currentLang === 'ru' ? 'Удалить?' : 'Delete?')) return;
+            const endpoint = currentTab === 0 ? `/api/models/${id}` : `/api/categories/${id}`;
+            await fetch(endpoint, {
+                method: 'DELETE',
+                headers: { 'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '' }
+            });
+            renderAdminList();
+            fetchAndRender();
+        }
+
+        async function addMedia(itemId) {
+            const fileInput = document.getElementById(`media-file-${itemId}`);
+            if (!fileInput.files[0]) return alert('Выберите файл');
+            const type = document.getElementById(`media-type-${itemId}`).value;
+
+            const formData = new FormData();
+            formData.append('initData', window.Telegram?.WebApp?.initData || '');
+            formData.append('type', type);
+            formData.append('description_ru', '');
+            formData.append('description_en', '');
+            formData.append('file', fileInput.files[0]);
+
+            const endpoint = currentTab === 0 
+                ? `/api/models/${itemId}/media` 
+                : `/api/categories/${itemId}/media`;
+
+            await fetch(endpoint, { method: 'POST', body: formData });
+            alert(currentLang === 'ru' ? 'Медиа добавлено!' : 'Media added!');
+            renderAdminList();
+        }
+
+        async function deleteMedia(itemId, mediaId) {
+            if (!confirm(currentLang === 'ru' ? 'Удалить медиа?' : 'Delete media?')) return;
+            const endpoint = currentTab === 0 
+                ? `/api/models/${itemId}/media/${mediaId}` 
+                : `/api/categories/${itemId}/media/${mediaId}`;
+            await fetch(endpoint, {
+                method: 'DELETE',
+                headers: { 'X-Telegram-Init-Data': window.Telegram?.WebApp?.initData || '' }
+            });
+            renderAdminList();
+        }
+
+        // Формы добавления
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('add-model-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData();
+                formData.append('initData', window.Telegram?.WebApp?.initData || '');
+                formData.append('name_ru', document.getElementById('model-name-ru').value);
+                formData.append('name_en', document.getElementById('model-name-en').value || '');
+                const coverFile = document.getElementById('model-cover').files[0];
+                if (coverFile) formData.append('cover', coverFile);
+
+                await fetch('/api/models', { method: 'POST', body: formData });
+                alert(currentLang === 'ru' ? 'Модель добавлена!' : 'Model added!');
+                document.getElementById('add-model-form').reset();
+                renderAdminList();
+                fetchAndRender();
+            });
+
+            document.getElementById('add-category-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData();
+                formData.append('initData', window.Telegram?.WebApp?.initData || '');
+                formData.append('hashtag', document.getElementById('category-hashtag').value);
+
+                await fetch('/api/categories', { method: 'POST', body: formData });
+                alert(currentLang === 'ru' ? 'Категория добавлена!' : 'Category added!');
+                document.getElementById('add-category-form').reset();
+                renderAdminList();
+                fetchAndRender();
+            });
+        });
+
+        // Инициализация
+        window.onload = () => {
+            if (window.Telegram?.WebApp) window.Telegram.WebApp.expand();
+            loadSavedLanguage();
+            applyLanguage();
+            checkAdmin();
+            fetchAndRender();
+
+            document.getElementById('search-input').addEventListener('input', () => {
+                currentPage = 1;
+                fetchAndRender();
+            });
+        };
+
+        function showDetail(id) {
+            alert((currentLang === 'ru' ? 'Детальная карточка ID: ' : 'Detail ID: ') + id);
+        }
+    </script>
+</body>
+</html>
