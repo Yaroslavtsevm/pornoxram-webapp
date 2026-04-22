@@ -81,6 +81,7 @@
         let currentPage = 1;
         let currentSearch = '';
         let currentLang = localStorage.getItem('preferredLang') || 'ru';
+        const initData = window.Telegram?.WebApp?.initData || '';
 
         function applyLanguage() {
             document.getElementById('lang-text').textContent = currentLang.toUpperCase();
@@ -131,11 +132,6 @@
             container.innerHTML = html || '<p class="col-span-full text-center text-gray-400 py-12">Ничего не найдено</p>';
         }
 
-        // Открытие приватного канала со всеми видео модели
-        function openModelChannel() {
-            window.open("https://t.me/+u8svaG24-xo5MDMy", "_blank");
-        }
-
         function renderPagination(pages) {
             const container = document.getElementById('pagination');
             if (pages <= 1) { container.innerHTML = ''; return; }
@@ -153,6 +149,11 @@
             document.getElementById('tab-categories').classList.toggle('tab-active', tab === 1);
             currentPage = 1;
             fetchAndRender();
+        }
+
+        // Открытие приватного канала
+        function openModelChannel() {
+            window.open("https://t.me/+u8svaG24-xo5MDMy", "_blank");
         }
 
         function toggleAdminPanel() {
@@ -179,13 +180,11 @@
                             <button onclick="deleteModel(${model.id})" class="bg-red-600 hover:bg-red-700 px-6 py-4 rounded-2xl">Удалить</button>
                         </div>
 
-                        <!-- Добавление видео -->
                         <div class="flex gap-3 mb-6">
                             <input type="file" id="video-file-${model.id}" accept="video/*" class="flex-1 bg-zinc-900 p-4 rounded-2xl">
                             <button onclick="addVideoToModel(${model.id})" class="bg-pink-600 hover:bg-pink-700 px-8 py-4 rounded-2xl">Добавить видео</button>
                         </div>
 
-                        <!-- Список видео модели -->
                         <div class="grid grid-cols-2 gap-4" id="media-list-${model.id}">
                             ${(model.media || []).filter(m => m.type === 'video').map(m => `
                                 <div class="bg-zinc-950 rounded-2xl p-3">
@@ -197,7 +196,7 @@
                     </div>`;
             });
 
-            document.getElementById('admin-list').innerHTML = html || '<p class="text-gray-400 text-center py-10">Моделей пока нет. Добавьте первую.</p>';
+            document.getElementById('admin-list').innerHTML = html || '<p class="text-gray-400 text-center py-10">Моделей пока нет</p>';
         }
 
         async function saveModelNames(modelId) {
@@ -215,7 +214,7 @@
 
         async function addVideoToModel(modelId) {
             const fileInput = document.getElementById(`video-file-${modelId}`);
-            if (!fileInput.files[0]) return alert('Выберите видео файл');
+            if (!fileInput.files[0]) return alert('Выберите видео');
 
             const formData = new FormData();
             formData.append('type', 'video');
@@ -223,19 +222,27 @@
             formData.append('description_en', '');
             formData.append('file', fileInput.files[0]);
 
-            await fetch(`/api/models/${modelId}/media`, { method: 'POST', body: formData });
-            alert('Видео добавлено к модели');
-            loadAdminModels();
+            const res = await fetch(`/api/models/${modelId}/media`, { 
+                method: 'POST', 
+                body: formData 
+            });
+
+            if (res.ok) {
+                alert('Видео добавлено!');
+                loadAdminModels();
+            } else {
+                alert('Ошибка при добавлении видео');
+            }
         }
 
         async function deleteModel(modelId) {
-            if (!confirm('Удалить модель и все её видео?')) return;
+            if (!confirm('Удалить модель?')) return;
             await fetch(`/api/models/${modelId}`, { method: 'DELETE' });
             loadAdminModels();
         }
 
         async function deleteMedia(modelId, mediaId) {
-            if (!confirm('Удалить это видео?')) return;
+            if (!confirm('Удалить видео?')) return;
             await fetch(`/api/models/${modelId}/media/${mediaId}`, { method: 'DELETE' });
             loadAdminModels();
         }
@@ -244,18 +251,29 @@
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('add-model-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
+
                 const formData = new FormData();
+                formData.append('initData', initData);                    // ← Важно!
                 formData.append('name_ru', document.getElementById('model-ru').value);
                 formData.append('name_en', document.getElementById('model-en').value || '');
                 formData.append('cover', document.getElementById('model-cover').files[0]);
 
-                const res = await fetch('/api/models', { method: 'POST', body: formData });
-                if (res.ok) {
-                    alert('Модель успешно добавлена!');
-                    document.getElementById('add-model-form').reset();
-                    loadAdminModels();   // обновляем список
-                } else {
-                    alert('Ошибка при добавлении модели');
+                try {
+                    const res = await fetch('/api/models', { 
+                        method: 'POST', 
+                        body: formData 
+                    });
+
+                    if (res.ok) {
+                        alert('Модель успешно добавлена!');
+                        document.getElementById('add-model-form').reset();
+                        loadAdminModels();
+                    } else {
+                        const error = await res.json();
+                        alert('Ошибка: ' + (error.detail || 'Неизвестная ошибка'));
+                    }
+                } catch (err) {
+                    alert('Ошибка соединения с сервером');
                 }
             });
         });
