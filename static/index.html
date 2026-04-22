@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PornoXram</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+        body { 
+            background: linear-gradient(180deg, #1a0033 0%, #000000 100%); 
+            color: white; 
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .header-text { 
+            font-family: 'Playfair Display', serif; 
+            font-size: 2.8rem; 
+            background: linear-gradient(90deg, #ff00aa, #aa00ff, #00ffff); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+        .media-card:hover { 
+            transform: scale(1.05); 
+            box-shadow: 0 0 20px rgba(255, 0, 170, 0.6); 
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-24">
+    <div class="max-w-7xl mx-auto px-4 pt-6">
+        <h1 class="header-text text-center mb-8">PornoXram</h1>
+
+        <!-- Поиск -->
+        <div class="mb-6">
+            <input id="search-input" type="text" placeholder="Поиск моделей или категорий..." 
+                   class="w-full bg-zinc-900 rounded-3xl px-6 py-4 text-white outline-none focus:ring-2 focus:ring-pink-500"
+                   onkeyup="if(event.key==='Enter') loadData()">
+        </div>
+
+        <div id="main-content" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+
+        <!-- Пагинация -->
+        <div id="pagination" class="flex justify-center gap-4 mt-8"></div>
+    </div>
+
+    <script>
+        let currentTab = 0; // 0 = models, 1 = categories
+        let currentPage = 1;
+        let currentSearch = '';
+
+        async function loadData() {
+            currentSearch = document.getElementById('search-input').value.trim();
+            currentPage = 1;
+            await fetchAndRender();
+        }
+
+        async function fetchAndRender() {
+            const params = new URLSearchParams({
+                page: currentPage,
+                limit: 12,
+                search: currentSearch
+            });
+
+            const endpoint = currentTab === 0 ? '/api/models' : '/api/categories';
+            const res = await fetch(`${endpoint}?${params}`);
+            if (!res.ok) {
+                console.error('Ошибка загрузки');
+                return;
+            }
+            const data = await res.json();
+
+            renderItems(data.items);
+            renderPagination(data.total, data.pages);
+        }
+
+        function renderItems(items) {
+            const container = document.getElementById('main-content');
+            container.innerHTML = items.map(item => `
+                <div class="media-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer">
+                    <img src="${item.cover_url || item.url || 'https://via.placeholder.com/300x400?text=No+Image'}" 
+                         class="w-full h-64 object-cover" alt="${item.name_ru || item.hashtag}">
+                    <div class="p-3">
+                        <p class="font-medium">${item.name_ru || item.hashtag}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderPagination(total, pages) {
+            let html = '';
+            if (pages > 1) {
+                html = `
+                    <button onclick="changePage(${currentPage-1})" ${currentPage===1?'disabled':'class="px-4 py-2 bg-zinc-800 rounded-xl"'}>←</button>
+                    <span class="px-6 py-2">${currentPage} / ${pages}</span>
+                    <button onclick="changePage(${currentPage+1})" ${currentPage===pages?'disabled':'class="px-4 py-2 bg-zinc-800 rounded-xl"'}>→</button>
+                `;
+            }
+            document.getElementById('pagination').innerHTML = html;
+        }
+
+        function changePage(page) {
+            if (page < 1 || page > 999) return;
+            currentPage = page;
+            fetchAndRender();
+        }
+
+        // Загрузка при старте
+        window.onload = () => {
+            fetchAndRender();
+        };
+    </script>
+</body>
+</html>
