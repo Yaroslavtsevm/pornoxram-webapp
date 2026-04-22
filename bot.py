@@ -64,7 +64,7 @@ def is_admin(init_data_str: str) -> bool:
     data = validate_init_data(init_data_str)
     return data and data.get("user", {}).get("id") == ADMIN_USER_ID
 
-# ===================== CLOUDINARY =====================
+# ===================== ЗАГРУЗКА =====================
 async def upload_to_cloudinary(file: UploadFile):
     contents = await file.read()
     result = cloudinary.uploader.upload(
@@ -109,7 +109,7 @@ async def check_admin(request: Request):
     init_data = request.headers.get("X-Telegram-Init-Data", "")
     return {"is_admin": is_admin(init_data)}
 
-# ===================== ДОБАВЛЕНИЕ МОДЕЛИ =====================
+# ===================== ДОБАВЛЕНИЕ МОДЕЛИ (самое важное) =====================
 @app.post("/api/models")
 async def add_model(
     initData: str = Form(...),
