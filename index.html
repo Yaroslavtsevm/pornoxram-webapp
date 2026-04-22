@@ -40,26 +40,26 @@
 
     <!-- Админ панель -->
     <div id="admin-panel" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4">
-        <div class="bg-zinc-900 rounded-3xl w-full max-w-lg max-h-[90vh] overflow-auto">
+        <div class="bg-zinc-900 rounded-3xl w-full max-w-lg">
             <div class="p-6 border-b border-zinc-700 flex justify-between bg-zinc-950">
                 <h2 class="text-3xl font-bold">👑 Admin Panel</h2>
                 <button onclick="toggleAdminPanel()" class="text-4xl text-pink-400">✕</button>
             </div>
 
             <div class="p-6">
-                <form id="add-model-form" class="space-y-6">
+                <form id="add-model-form" class="space-y-5">
                     <div>
-                        <label class="block text-sm mb-2">Model Name</label>
-                        <input type="text" id="model-name" placeholder="Enter model name" 
+                        <label class="block text-sm mb-1">Model Name</label>
+                        <input type="text" id="model-name" placeholder="Aaliyah Love" 
                                class="w-full bg-zinc-800 p-4 rounded-2xl" required>
                     </div>
                     <div>
-                        <label class="block text-sm mb-2">Cover Photo</label>
+                        <label class="block text-sm mb-1">Cover Photo</label>
                         <input type="file" id="model-cover" accept="image/*" 
                                class="w-full bg-zinc-800 p-4 rounded-2xl" required>
                     </div>
                     <div>
-                        <label class="block text-sm mb-2">Hashtag</label>
+                        <label class="block text-sm mb-1">Hashtag</label>
                         <input type="text" id="model-hashtag" placeholder="#AaliyahLove" 
                                class="w-full bg-zinc-800 p-4 rounded-2xl">
                     </div>
@@ -117,7 +117,7 @@
             document.getElementById('admin-panel').classList.toggle('hidden');
         }
 
-        // Добавление модели
+        // Добавление модели — исправленная версия
         document.getElementById('add-model-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -134,15 +134,17 @@
                 });
 
                 if (res.ok) {
-                    alert('Model added successfully!');
+                    alert('✅ Model added successfully!');
                     document.getElementById('add-model-form').reset();
                     fetchAndRender();
                 } else {
-                    const err = await res.json().catch(() => ({}));
-                    alert('Error: ' + (err.detail || 'Unknown error'));
+                    const errorData = await res.json().catch(() => ({}));
+                    console.error("Server error:", errorData);
+                    alert('Error: ' + (errorData.detail || JSON.stringify(errorData)));
                 }
             } catch (err) {
-                alert('Connection error. Please try again.');
+                console.error(err);
+                alert('Connection error. Check console for details.');
             }
         });
 
