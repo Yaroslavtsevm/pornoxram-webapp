@@ -31,7 +31,6 @@
         <div id="main-content" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
     </div>
 
-    <!-- Sponsorship -->
     <a href="https://t.me/PX_MrM" target="_blank"
        class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-10 py-5 rounded-3xl shadow-2xl flex items-center gap-4 text-xl font-bold z-50">
         <span class="text-3xl">⭐</span>
@@ -50,21 +49,17 @@
                 <form id="add-model-form" class="space-y-5">
                     <div>
                         <label class="block text-sm mb-1">Model Name</label>
-                        <input type="text" name="name_ru" id="model-name" placeholder="Aaliyah Love" 
-                               class="w-full bg-zinc-800 p-4 rounded-2xl" required>
+                        <input type="text" id="model-name" placeholder="Aaliyah Love" class="w-full bg-zinc-800 p-4 rounded-2xl" required>
                     </div>
                     <div>
                         <label class="block text-sm mb-1">Cover Photo</label>
-                        <input type="file" name="cover" id="model-cover" accept="image/*" 
-                               class="w-full bg-zinc-800 p-4 rounded-2xl" required>
+                        <input type="file" id="model-cover" accept="image/*" class="w-full bg-zinc-800 p-4 rounded-2xl" required>
                     </div>
                     <div>
                         <label class="block text-sm mb-1">Hashtag</label>
-                        <input type="text" name="hashtags" id="model-hashtag" placeholder="#AaliyahLove" 
-                               class="w-full bg-zinc-800 p-4 rounded-2xl">
+                        <input type="text" id="model-hashtag" placeholder="#AaliyahLove" class="w-full bg-zinc-800 p-4 rounded-2xl">
                     </div>
-                    <button type="submit" 
-                            class="w-full bg-pink-600 hover:bg-pink-700 py-5 rounded-3xl font-bold text-lg">
+                    <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 py-5 rounded-3xl font-bold text-lg">
                         Add Model
                     </button>
                 </form>
@@ -96,12 +91,9 @@
                 const title = model.name_ru || 'Unnamed';
                 const image = model.cover_url || 'https://via.placeholder.com/400x300/1a0033/ffffff?text=No+Image';
                 html += `
-                    <div class="media-card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer" 
-                         onclick="openChannel('${model.hashtags || ''}')">
+                    <div class="media-card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer" onclick="openChannel('${model.hashtags || ''}')">
                         <img src="${image}" class="w-full aspect-[4/3] object-cover">
-                        <div class="p-4 text-center">
-                            <p class="font-medium">${title}</p>
-                        </div>
+                        <div class="p-4 text-center"><p class="font-medium">${title}</p></div>
                     </div>`;
             });
             container.innerHTML = html || '<p class="text-center text-gray-400 py-12">No models yet</p>';
@@ -139,11 +131,9 @@
                     fetchAndRender();
                 } else {
                     const error = await res.json().catch(() => ({}));
-                    console.error(error);
                     alert('Error: ' + (error.detail || 'Failed to add model'));
                 }
             } catch (err) {
-                console.error(err);
                 alert('Connection error. Please try again.');
             }
         });
