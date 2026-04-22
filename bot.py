@@ -32,7 +32,7 @@ INDEX_FILE = BASE_DIR / "index.html"
 # Создаём папку для данных
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# ===================== СТАТИЧЕСКИЕ ФАЙЛЫ (исправлено) =====================
+# ===================== СТАТИЧЕСКИЕ ФАЙЛЫ =====================
 static_dir = BASE_DIR / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -360,6 +360,18 @@ async def delete_media_from_category(cat_id: int, media_id: int, request: Reques
     cat["media"] = [m for m in cat["media"] if m["id"] != media_id]
     save_data(app_data)
     return {"success": True}
+
+# ===================== СПЕЦИАЛЬНЫЙ ЭНДПОИНТ ДЛЯ АДМИН ДОСТУПА =====================
+@app.get("/api/admin-link")
+async def get_admin_link(request: Request):
+    init_data = request.headers.get("X-Telegram-Init-Data", "")
+    if not is_admin(init_data):
+        raise HTTPException(403, "Доступ запрещён")
+    
+    return {
+        "success": True,
+        "admin_url": "https://pornoxram.onrender.com/?admin=true"
+    }
 
 if __name__ == "__main__":
     import uvicorn
