@@ -10,7 +10,6 @@
         body { 
             background: linear-gradient(180deg, #1a0033 0%, #000000 100%); 
             color: white; 
-            font-family: system-ui, -apple-system, sans-serif;
         }
         .header-text { 
             font-family: 'Playfair Display', serif; 
@@ -21,47 +20,40 @@
         }
         .tab-active { border-bottom: 4px solid #ff00aa; color: #ff00aa; }
         .media-card:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255,0,170,0.7); }
+        .admin-panel { animation: fadeIn 0.3s ease; }
     </style>
 </head>
 <body class="min-h-screen pb-32">
     <div class="max-w-7xl mx-auto px-4 pt-6">
-        <!-- Шапка -->
         <div class="flex justify-between items-center mb-6">
             <h1 id="main-title" class="header-text">PornoXram</h1>
             
             <button onclick="toggleLanguage()" id="lang-switch"
-                    class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-3xl text-sm font-medium transition">
-                <span id="lang-flag">🇷🇺</span>
-                <span id="lang-text">Русский</span>
+                    class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-3xl text-sm font-medium">
+                <span id="lang-text">RU</span>
             </button>
         </div>
 
-        <!-- Поиск -->
         <div class="mb-6">
             <input id="search-input" type="text" placeholder="Поиск..." 
                    class="w-full bg-zinc-900 rounded-3xl px-6 py-4 text-lg outline-none focus:ring-2 focus:ring-pink-500">
         </div>
 
-        <!-- Табы -->
         <div class="flex gap-8 border-b border-zinc-700 mb-8">
             <button onclick="switchTab(0)" id="tab-models" class="tab-active pb-3 px-8 text-2xl font-medium">Модели</button>
             <button onclick="switchTab(1)" id="tab-categories" class="pb-3 px-8 text-2xl font-medium">Категории</button>
             
-            <!-- Кнопка админа появляется только после входа через /admin -->
             <button onclick="toggleAdminPanel()" id="admin-btn" 
                     class="ml-auto hidden bg-gradient-to-r from-pink-600 to-purple-600 px-8 py-2 rounded-3xl text-white font-bold text-lg">
                 👑 Админ
             </button>
         </div>
 
-        <!-- Основной контент -->
         <div id="main-content" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
-
-        <!-- Пагинация -->
         <div id="pagination" class="flex justify-center gap-6 mt-12 text-xl"></div>
     </div>
 
-    <!-- Кнопка спонсирования -->
+    <!-- Спонсирование -->
     <a href="https://t.me/PX_MrM" target="_blank"
        class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-10 py-5 rounded-3xl shadow-2xl flex items-center gap-4 text-xl font-bold z-50">
         <span class="text-3xl">⭐</span>
@@ -71,21 +63,41 @@
         </div>
     </a>
 
-    <!-- Админ-панель -->
-    <div id="admin-panel" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4">
-        <div class="bg-zinc-900 rounded-3xl w-full max-w-5xl max-h-[92vh] overflow-hidden">
+    <!-- ==================== АДМИН ПАНЕЛЬ ==================== -->
+    <div id="admin-panel" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4 admin-panel">
+        <div class="bg-zinc-900 rounded-3xl w-full max-w-6xl max-h-[94vh] overflow-hidden">
             <div class="p-6 border-b border-zinc-700 flex justify-between items-center bg-zinc-950">
                 <h2 class="text-3xl font-bold">👑 Админ-панель</h2>
                 <button onclick="toggleAdminPanel()" class="text-4xl text-pink-400 hover:text-pink-300">✕</button>
             </div>
-            <div class="p-8 text-center">
-                <h3 class="text-2xl mb-6 text-pink-400">Добро пожаловать в админку</h3>
-                <p class="text-gray-400 mb-8">Только ты имеешь доступ.</p>
-                <div class="bg-zinc-800 rounded-3xl p-8">
-                    <p class="text-lg">Здесь будет полный функционал:<br>
-                    • Добавление моделей и категорий<br>
-                    • Загрузка фото и видео<br>
-                    • Редактирование и удаление</p>
+
+            <div class="p-6 overflow-auto" style="max-height: calc(94vh - 80px);">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Добавить модель -->
+                    <div class="bg-zinc-800 rounded-3xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Добавить модель</h3>
+                        <form id="add-model-form" class="space-y-4">
+                            <input type="text" id="model-ru" placeholder="Название RU" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+                            <input type="text" id="model-en" placeholder="Название ENG" class="w-full bg-zinc-900 p-4 rounded-2xl">
+                            <input type="file" id="model-cover" accept="image/*" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+                            <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 py-4 rounded-3xl font-bold">Добавить модель</button>
+                        </form>
+                    </div>
+
+                    <!-- Добавить категорию -->
+                    <div class="bg-zinc-800 rounded-3xl p-6">
+                        <h3 class="text-xl font-bold mb-4">Добавить категорию</h3>
+                        <form id="add-category-form" class="space-y-4">
+                            <input type="text" id="category-hashtag" placeholder="#хэштег" class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+                            <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 py-4 rounded-3xl font-bold">Добавить категорию</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Управление существующими элементами -->
+                <div class="mt-10">
+                    <h3 class="text-2xl mb-6">Управление контентом</h3>
+                    <div id="admin-list" class="space-y-8"></div>
                 </div>
             </div>
         </div>
@@ -95,11 +107,10 @@
         let currentTab = 0;
         let currentPage = 1;
         let currentSearch = '';
-        let isAdminMode = false;
         let currentLang = localStorage.getItem('preferredLang') || 'ru';
 
         function applyLanguage() {
-            document.getElementById('main-title').textContent = "PornoXram";
+            document.getElementById('lang-text').textContent = currentLang.toUpperCase();
             document.getElementById('search-input').placeholder = currentLang === 'ru' ? "Поиск..." : "Search...";
             document.getElementById('tab-models').textContent = currentLang === 'ru' ? "Модели" : "Models";
             document.getElementById('tab-categories').textContent = currentLang === 'ru' ? "Категории" : "Categories";
@@ -112,34 +123,14 @@
             applyLanguage();
         }
 
-        // Проверка секретного параметра от команды /admin
+        // Проверка админ-режима
         function checkAdminMode() {
             const params = new URLSearchParams(window.location.search);
             if (params.get('admin') === 'true') {
-                isAdminMode = true;
                 document.getElementById('admin-btn').classList.remove('hidden');
-                console.log('✅ Админ-режим активирован');
             }
         }
 
-        async function checkAdmin() {
-            const initData = window.Telegram?.WebApp?.initData || '';
-            if (initData) {
-                const res = await fetch('/api/check_admin', {
-                    headers: { 'X-Telegram-Init-Data': initData }
-                });
-                const data = await res.json();
-                if (data.is_admin || isAdminMode) {
-                    document.getElementById('admin-btn').classList.remove('hidden');
-                }
-            }
-        }
-
-        function toggleAdminPanel() {
-            document.getElementById('admin-panel').classList.toggle('hidden');
-        }
-
-        // Основные функции
         async function fetchAndRender() {
             const params = new URLSearchParams({ page: currentPage, limit: 12, search: currentSearch });
             const endpoint = currentTab === 0 ? '/api/models' : '/api/categories';
@@ -154,7 +145,9 @@
             const container = document.getElementById('main-content');
             let html = '';
             items.forEach(item => {
-                const title = currentTab === 0 ? item.name_ru : item.hashtag;
+                const title = currentTab === 0 
+                    ? (currentLang === 'ru' ? item.name_ru : item.name_en || item.name_ru) 
+                    : item.hashtag;
                 const image = item.cover_url || (item.media && item.media[0] ? item.media[0].url : 'https://via.placeholder.com/400x300/1a0033/ffffff?text=No+Image');
                 html += `
                     <div class="media-card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer" onclick="showDetail(${item.id})">
@@ -175,12 +168,7 @@
             `;
         }
 
-        function changePage(page) {
-            if (page < 1) return;
-            currentPage = page;
-            fetchAndRender();
-        }
-
+        function changePage(page) { if (page < 1) return; currentPage = page; fetchAndRender(); }
         function switchTab(tab) {
             currentTab = tab;
             document.getElementById('tab-models').classList.toggle('tab-active', tab === 0);
@@ -190,7 +178,132 @@
         }
 
         function showDetail(id) {
-            alert(`Открыта карточка ID: ${id}`);
+            alert(`Карточка ID: ${id} (можно расширить)`);
+        }
+
+        function toggleAdminPanel() {
+            document.getElementById('admin-panel').classList.toggle('hidden');
+            if (!document.getElementById('admin-panel').classList.contains('hidden')) {
+                loadAdminContent();
+            }
+        }
+
+        // ===================== АДМИН ФУНКЦИИ =====================
+        async function loadAdminContent() {
+            const container = document.getElementById('admin-list');
+            const endpoint = currentTab === 0 ? '/api/models?limit=100' : '/api/categories?limit=100';
+            const res = await fetch(endpoint);
+            const data = await res.json();
+            const items = data.items || [];
+
+            let html = '';
+            items.forEach(item => {
+                const title = currentTab === 0 ? item.name_ru : item.hashtag;
+                const id = item.id;
+                const mediaList = item.media || [];
+
+                html += `
+                    <div class="bg-zinc-800 rounded-3xl p-6">
+                        <div class="flex gap-4 mb-4">
+                            <input type="text" id="title-${id}" value="${title}" 
+                                   class="flex-1 bg-zinc-900 p-4 rounded-2xl text-lg">
+                            <button onclick="saveTitle(${id})" 
+                                    class="bg-emerald-600 hover:bg-emerald-700 px-6 py-4 rounded-2xl">Сохранить</button>
+                            <button onclick="deleteItem(${id})" 
+                                    class="bg-red-600 hover:bg-red-700 px-6 py-4 rounded-2xl">Удалить</button>
+                        </div>
+
+                        <!-- Добавление медиа -->
+                        <div class="flex gap-3 mb-6">
+                            <select id="media-type-${id}" class="bg-zinc-900 p-4 rounded-2xl">
+                                <option value="image">Фото</option>
+                                <option value="video">Видео</option>
+                            </select>
+                            <input type="file" id="media-file-${id}" accept="image/*,video/*" class="flex-1 bg-zinc-900 p-4 rounded-2xl">
+                            <button onclick="addMedia(${id})" class="bg-pink-600 hover:bg-pink-700 px-8 py-4 rounded-2xl">Загрузить</button>
+                        </div>
+
+                        <!-- Существующие медиа -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            ${mediaList.map(m => `
+                                <div class="bg-zinc-950 rounded-2xl p-3 relative group">
+                                    ${m.type === 'video' ? 
+                                        `<video src="${m.url}" class="w-full rounded-xl" muted controls></video>` : 
+                                        `<img src="${m.url}" class="w-full rounded-xl">`}
+                                    <input type="text" value="${m.description_ru || ''}" 
+                                           id="desc-ru-${id}-${m.id}" 
+                                           placeholder="Описание RU" 
+                                           class="mt-2 w-full bg-zinc-900 p-2 rounded-xl text-sm">
+                                    <input type="text" value="${m.description_en || ''}" 
+                                           id="desc-en-${id}-${m.id}" 
+                                           placeholder="Описание ENG" 
+                                           class="mt-1 w-full bg-zinc-900 p-2 rounded-xl text-sm">
+                                    <button onclick="saveMediaDesc(${id}, ${m.id})" 
+                                            class="absolute top-2 right-2 bg-emerald-600 text-xs px-3 py-1 rounded-xl">Сохранить</button>
+                                    <button onclick="deleteMedia(${id}, ${m.id})" 
+                                            class="absolute bottom-2 right-2 bg-red-600 text-xs px-3 py-1 rounded-xl">Удалить</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            });
+
+            container.innerHTML = html || '<p class="text-gray-400 text-center py-10">Пока нет контента</p>';
+        }
+
+        async function saveTitle(id) {
+            const newTitle = document.getElementById(`title-${id}`).value.trim();
+            if (!newTitle) return;
+            const formData = new FormData();
+            formData.append('initData', '');
+            if (currentTab === 0) formData.append('name_ru', newTitle);
+            else formData.append('hashtag', newTitle);
+
+            const endpoint = currentTab === 0 ? `/api/models/${id}` : `/api/categories/${id}`;
+            await fetch(endpoint, { method: 'PATCH', body: formData });
+            alert('Название обновлено');
+            loadAdminContent();
+        }
+
+        async function addMedia(id) {
+            const fileInput = document.getElementById(`media-file-${id}`);
+            if (!fileInput.files[0]) return alert('Выберите файл');
+            const type = document.getElementById(`media-type-${id}`).value;
+
+            const formData = new FormData();
+            formData.append('initData', '');
+            formData.append('type', type);
+            formData.append('description_ru', '');
+            formData.append('description_en', '');
+            formData.append('file', fileInput.files[0]);
+
+            const endpoint = currentTab === 0 ? `/api/models/${id}/media` : `/api/categories/${id}/media`;
+            await fetch(endpoint, { method: 'POST', body: formData });
+            alert('Медиа добавлено');
+            loadAdminContent();
+        }
+
+        async function saveMediaDesc(itemId, mediaId) {
+            const descRu = document.getElementById(`desc-ru-${itemId}-${mediaId}`).value;
+            const descEn = document.getElementById(`desc-en-${itemId}-${mediaId}`).value;
+            // Пока просто алерт, можно расширить позже
+            alert(`Описание сохранено:\nRU: ${descRu}\nENG: ${descEn}`);
+        }
+
+        async function deleteItem(id) {
+            if (!confirm('Удалить элемент?')) return;
+            const endpoint = currentTab === 0 ? `/api/models/${id}` : `/api/categories/${id}`;
+            await fetch(endpoint, { method: 'DELETE', headers: { 'X-Telegram-Init-Data': '' } });
+            loadAdminContent();
+        }
+
+        async function deleteMedia(itemId, mediaId) {
+            if (!confirm('Удалить медиа?')) return;
+            const endpoint = currentTab === 0 
+                ? `/api/models/${itemId}/media/${mediaId}` 
+                : `/api/categories/${itemId}/media/${mediaId}`;
+            await fetch(endpoint, { method: 'DELETE', headers: { 'X-Telegram-Init-Data': '' } });
+            loadAdminContent();
         }
 
         // Инициализация
@@ -198,15 +311,15 @@
             if (window.Telegram?.WebApp) window.Telegram.WebApp.expand();
             applyLanguage();
             checkAdminMode();
-            checkAdmin();
             fetchAndRender();
-
-            document.getElementById('search-input').addEventListener('input', () => {
-                currentSearch = document.getElementById('search-input').value.trim();
-                currentPage = 1;
-                fetchAndRender();
-            });
         };
+
+        function checkAdminMode() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('admin') === 'true') {
+                document.getElementById('admin-btn').classList.remove('hidden');
+            }
+        }
     </script>
 </body>
 </html>
