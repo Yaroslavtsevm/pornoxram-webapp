@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>PornoXram</title>
+    <title>PX Models</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
@@ -26,45 +26,53 @@
 </head>
 <body class="min-h-screen pb-32">
     <div class="max-w-7xl mx-auto px-4 pt-8">
-        <h1 class="header-text text-center mb-10">Модели</h1>
+        <h1 class="header-text text-center mb-10">PX Models</h1>
 
         <div class="mb-8">
-            <input id="search-input" type="text" placeholder="Поиск моделей..." 
+            <input id="search-input" type="text" placeholder="Search models..." 
                    class="w-full bg-zinc-900 rounded-3xl px-6 py-4 text-lg outline-none focus:ring-2 focus:ring-pink-500">
+        </div>
+
+        <!-- Кнопка админа -->
+        <div class="flex justify-end mb-6">
+            <button onclick="toggleAdminPanel()" id="admin-btn" 
+                    class="hidden bg-gradient-to-r from-pink-600 to-purple-600 px-8 py-3 rounded-3xl text-white font-bold text-lg">
+                👑 Admin Panel
+            </button>
         </div>
 
         <div id="main-content" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
     </div>
 
-    <!-- Кнопка спонсирования -->
+    <!-- Спонсирование на английском -->
     <a href="https://t.me/PX_MrM" target="_blank"
        class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-10 py-5 rounded-3xl shadow-2xl flex items-center gap-4 text-xl font-bold z-50">
         <span class="text-3xl">⭐</span>
-        <div>Спонсирование <span class="text-sm opacity-90">@PX_MrM • Stars</span></div>
+        <div>Sponsorship <span class="text-sm opacity-90">@PX_MrM • Stars</span></div>
     </a>
 
     <!-- ==================== АДМИН ПАНЕЛЬ ==================== -->
     <div id="admin-panel" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4">
         <div class="bg-zinc-900 rounded-3xl w-full max-w-5xl max-h-[94vh] overflow-hidden">
             <div class="p-6 border-b border-zinc-700 flex justify-between items-center bg-zinc-950">
-                <h2 class="text-3xl font-bold">👑 Админ-панель</h2>
+                <h2 class="text-3xl font-bold">👑 Admin Panel</h2>
                 <button onclick="toggleAdminPanel()" class="text-4xl text-pink-400">✕</button>
             </div>
 
             <div class="p-6 overflow-auto" style="max-height: calc(94vh - 80px);">
                 <!-- Форма добавления модели -->
                 <div class="bg-zinc-800 rounded-3xl p-6 mb-10">
-                    <h3 class="text-xl font-bold mb-4">Добавить модель</h3>
+                    <h3 class="text-xl font-bold mb-4">Add New Model</h3>
                     <form id="add-model-form" class="space-y-4">
-                        <input type="text" id="model-name" placeholder="Имя модели" 
+                        <input type="text" id="model-name" placeholder="Model Name *" 
                                class="w-full bg-zinc-900 p-4 rounded-2xl" required>
                         <input type="file" id="model-cover" accept="image/*" 
                                class="w-full bg-zinc-900 p-4 rounded-2xl" required>
                         <input type="text" id="model-hashtags" placeholder="#hashtag1 #hashtag2" 
-                               class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+                               class="w-full bg-zinc-900 p-4 rounded-2xl">
                         <button type="submit" 
                                 class="w-full bg-pink-600 hover:bg-pink-700 py-4 rounded-3xl font-bold text-lg">
-                            Добавить модель
+                            Add Model
                         </button>
                     </form>
                 </div>
@@ -111,7 +119,7 @@
             const container = document.getElementById('main-content');
             let html = '';
             models.forEach(model => {
-                const title = model.name_ru || model.name_en || 'Без имени';
+                const title = model.name_ru || model.name_en || 'Model';
                 const image = model.cover_url || 'https://via.placeholder.com/400x300/1a0033/ffffff?text=No+Image';
                 
                 html += `
@@ -123,16 +131,14 @@
                         </div>
                     </div>`;
             });
-            container.innerHTML = html || '<p class="col-span-full text-center text-gray-400 py-12">Моделей пока нет</p>';
+            container.innerHTML = html || '<p class="col-span-full text-center text-gray-400 py-12">No models yet</p>';
         }
 
         // Открытие канала с хэштегами
         function openModelChannel(hashtags) {
             let url = CHANNEL_LINK;
-            if (hashtags) {
-                // Добавляем хэштеги в ссылку для быстрого поиска
-                const cleanTags = hashtags.replace(/#/g, '').trim();
-                if (cleanTags) url += `?q=${encodeURIComponent(cleanTags)}`;
+            if (hashtags && hashtags.trim() !== '') {
+                url += `?q=${encodeURIComponent(hashtags.trim())}`;
             }
             window.open(url, "_blank");
         }
@@ -154,22 +160,22 @@
             models.forEach(model => {
                 html += `
                     <div class="bg-zinc-800 rounded-3xl p-6">
-                        <div class="flex justify-between items-start">
+                        <div class="flex justify-between items-start mb-4">
                             <div>
                                 <p class="text-xl font-medium">${model.name_ru || model.name_en}</p>
                                 <p class="text-pink-400 text-sm">${model.hashtags || ''}</p>
                             </div>
                             <button onclick="deleteModel(${model.id})" 
-                                    class="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-2xl text-sm">Удалить</button>
+                                    class="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-2xl text-sm">Delete</button>
                         </div>
                     </div>`;
             });
 
-            document.getElementById('admin-list').innerHTML = html || '<p class="text-gray-400 text-center py-10">Моделей пока нет</p>';
+            document.getElementById('admin-list').innerHTML = html || '<p class="text-gray-400 text-center py-10">No models yet</p>';
         }
 
         async function deleteModel(id) {
-            if (!confirm('Удалить модель?')) return;
+            if (!confirm('Delete this model?')) return;
             await fetch(`/api/models/${id}`, { method: 'DELETE' });
             loadAdminModels();
         }
@@ -189,16 +195,16 @@
                 try {
                     const res = await fetch('/api/models', { method: 'POST', body: formData });
                     if (res.ok) {
-                        alert('Модель успешно добавлена!');
+                        alert('Model added successfully!');
                         document.getElementById('add-model-form').reset();
                         loadAdminModels();
-                        fetchAndRender();   // обновляем главную страницу
+                        fetchAndRender();
                     } else {
                         const err = await res.json();
-                        alert('Ошибка: ' + (err.detail || 'Не удалось добавить модель'));
+                        alert('Error: ' + (err.detail || 'Failed to add model'));
                     }
                 } catch (err) {
-                    alert('Ошибка соединения');
+                    alert('Connection error');
                 }
             });
         });
