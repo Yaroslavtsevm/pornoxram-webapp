@@ -7,88 +7,83 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
-        body { background: linear-gradient(180deg, #1a0033 0%, #000000 100%); color: white; }
-        .header-text { font-family: 'Playfair Display', serif; font-size: 2.8rem; background: linear-gradient(90deg, #ff00aa, #aa00ff, #00ffff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .tab-active { border-bottom: 4px solid #ff00aa; color: #ff00aa; }
-        .media-card:hover { transform: scale(1.05); box-shadow: 0 0 25px rgba(255,0,170,0.7); }
+        body { 
+            background: linear-gradient(180deg, #1a0033 0%, #000000 100%); 
+            color: white; 
+        }
+        .header-text { 
+            font-family: 'Playfair Display', serif; 
+            font-size: 2.8rem; 
+            background: linear-gradient(90deg, #ff00aa, #aa00ff, #00ffff); 
+            -webkit-background-clip: text; 
+            -webkit-text-fill-color: transparent; 
+        }
+        .media-card:hover { 
+            transform: scale(1.05); 
+            box-shadow: 0 0 25px rgba(255,0,170,0.7); 
+        }
     </style>
 </head>
 <body class="min-h-screen pb-32">
-    <div class="max-w-7xl mx-auto px-4 pt-6">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="header-text">PornoXram</h1>
-            <button onclick="toggleLanguage()" id="lang-switch"
-                    class="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-3xl text-sm font-medium">
-                <span id="lang-text">RU</span>
-            </button>
-        </div>
+    <div class="max-w-7xl mx-auto px-4 pt-8">
+        <h1 class="header-text text-center mb-10">Модели</h1>
 
-        <div class="mb-6">
+        <div class="mb-8">
             <input id="search-input" type="text" placeholder="Поиск моделей..." 
                    class="w-full bg-zinc-900 rounded-3xl px-6 py-4 text-lg outline-none focus:ring-2 focus:ring-pink-500">
         </div>
 
-        <div class="flex gap-8 border-b border-zinc-700 mb-8">
-            <button onclick="switchTab(0)" id="tab-models" class="tab-active pb-3 px-8 text-2xl font-medium">Модели</button>
-            <button onclick="switchTab(1)" id="tab-categories" class="pb-3 px-8 text-2xl font-medium">Категории</button>
-            <button onclick="toggleAdminPanel()" id="admin-btn" 
-                    class="ml-auto hidden bg-gradient-to-r from-pink-600 to-purple-600 px-8 py-2 rounded-3xl text-white font-bold text-lg">
-                👑 Админ
-            </button>
-        </div>
-
         <div id="main-content" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
-        <div id="pagination" class="flex justify-center gap-6 mt-12 text-xl"></div>
     </div>
 
-    <!-- Спонсирование -->
+    <!-- Кнопка спонсирования -->
     <a href="https://t.me/PX_MrM" target="_blank"
        class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-purple-600 text-white px-10 py-5 rounded-3xl shadow-2xl flex items-center gap-4 text-xl font-bold z-50">
         <span class="text-3xl">⭐</span>
-        <div><span id="sponsor-text">Спонсирование</span> <span class="text-sm opacity-90">@PX_MrM • Stars</span></div>
+        <div>Спонсирование <span class="text-sm opacity-90">@PX_MrM • Stars</span></div>
     </a>
 
-    <!-- Админ-панель -->
+    <!-- ==================== АДМИН ПАНЕЛЬ ==================== -->
     <div id="admin-panel" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[100] p-4">
         <div class="bg-zinc-900 rounded-3xl w-full max-w-5xl max-h-[94vh] overflow-hidden">
             <div class="p-6 border-b border-zinc-700 flex justify-between items-center bg-zinc-950">
-                <h2 class="text-3xl font-bold">👑 Админ-панель — Модели</h2>
+                <h2 class="text-3xl font-bold">👑 Админ-панель</h2>
                 <button onclick="toggleAdminPanel()" class="text-4xl text-pink-400">✕</button>
             </div>
 
             <div class="p-6 overflow-auto" style="max-height: calc(94vh - 80px);">
                 <!-- Форма добавления модели -->
                 <div class="bg-zinc-800 rounded-3xl p-6 mb-10">
-                    <h3 class="text-xl font-bold mb-4">Добавить новую модель</h3>
-                    <form id="add-model-form" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <input type="text" id="model-ru" placeholder="Имя на русском *" class="bg-zinc-900 p-4 rounded-2xl" required>
-                        <input type="text" id="model-en" placeholder="Имя на английском" class="bg-zinc-900 p-4 rounded-2xl">
-                        <input type="file" id="model-cover" accept="image/*" class="bg-zinc-900 p-4 rounded-2xl" required>
-                        <button type="submit" class="md:col-span-3 bg-pink-600 hover:bg-pink-700 py-4 rounded-3xl font-bold text-lg">
+                    <h3 class="text-xl font-bold mb-4">Добавить модель</h3>
+                    <form id="add-model-form" class="space-y-4">
+                        <input type="text" id="model-name" placeholder="Имя модели" 
+                               class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+                        <input type="file" id="model-cover" accept="image/*" 
+                               class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+                        <input type="text" id="model-hashtags" placeholder="#hashtag1 #hashtag2" 
+                               class="w-full bg-zinc-900 p-4 rounded-2xl" required>
+                        <button type="submit" 
+                                class="w-full bg-pink-600 hover:bg-pink-700 py-4 rounded-3xl font-bold text-lg">
                             Добавить модель
                         </button>
                     </form>
                 </div>
 
                 <!-- Список моделей -->
-                <div id="admin-list" class="space-y-8"></div>
+                <div id="admin-list" class="space-y-6"></div>
             </div>
         </div>
     </div>
 
     <script>
-        let currentTab = 0;
         let currentPage = 1;
         let currentSearch = '';
         let currentLang = localStorage.getItem('preferredLang') || 'ru';
         const initData = window.Telegram?.WebApp?.initData || '';
+        const CHANNEL_LINK = "https://t.me/+u8svaG24-xo5MDMy";
 
         function applyLanguage() {
             document.getElementById('lang-text').textContent = currentLang.toUpperCase();
-            document.getElementById('search-input').placeholder = currentLang === 'ru' ? "Поиск моделей..." : "Search models...";
-            document.getElementById('tab-models').textContent = currentLang === 'ru' ? "Модели" : "Models";
-            document.getElementById('tab-categories').textContent = currentLang === 'ru' ? "Категории" : "Categories";
-            document.getElementById('sponsor-text').textContent = currentLang === 'ru' ? "Спонсирование" : "Sponsorship";
         }
 
         function toggleLanguage() {
@@ -105,55 +100,41 @@
         }
 
         async function fetchAndRender() {
-            const params = new URLSearchParams({ page: currentPage, limit: 12, search: currentSearch });
-            const endpoint = currentTab === 0 ? '/api/models' : '/api/categories';
-            const res = await fetch(`${endpoint}?${params}`);
+            const params = new URLSearchParams({ page: currentPage, limit: 20, search: currentSearch });
+            const res = await fetch(`/api/models?${params}`);
             if (!res.ok) return;
             const data = await res.json();
-            renderItems(data.items);
-            renderPagination(data.pages);
+            renderModels(data.items);
         }
 
-        function renderItems(items) {
+        function renderModels(models) {
             const container = document.getElementById('main-content');
             let html = '';
-            items.forEach(item => {
-                const title = currentTab === 0 
-                    ? (currentLang === 'ru' ? item.name_ru : item.name_en || item.name_ru) 
-                    : item.hashtag;
-                const image = item.cover_url || 'https://via.placeholder.com/400x300/1a0033/ffffff?text=No+Image';
+            models.forEach(model => {
+                const title = model.name_ru || model.name_en || 'Без имени';
+                const image = model.cover_url || 'https://via.placeholder.com/400x300/1a0033/ffffff?text=No+Image';
                 
                 html += `
-                    <div class="media-card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer" onclick="openModelChannel()">
+                    <div class="media-card bg-zinc-900 rounded-3xl overflow-hidden cursor-pointer" 
+                         onclick="openModelChannel('${model.hashtags || ''}')">
                         <img src="${image}" class="w-full aspect-[4/3] object-cover" alt="${title}">
-                        <div class="p-4"><p class="font-medium text-lg">${title}</p></div>
+                        <div class="p-4 text-center">
+                            <p class="font-medium text-lg">${title}</p>
+                        </div>
                     </div>`;
             });
-            container.innerHTML = html || '<p class="col-span-full text-center text-gray-400 py-12">Ничего не найдено</p>';
+            container.innerHTML = html || '<p class="col-span-full text-center text-gray-400 py-12">Моделей пока нет</p>';
         }
 
-        function renderPagination(pages) {
-            const container = document.getElementById('pagination');
-            if (pages <= 1) { container.innerHTML = ''; return; }
-            container.innerHTML = `
-                <button onclick="changePage(${currentPage-1})" class="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-3xl">←</button>
-                <span class="px-10 py-3">${currentPage} / ${pages}</span>
-                <button onclick="changePage(${currentPage+1})" class="px-8 py-3 bg-zinc-800 hover:bg-zinc-700 rounded-3xl">→</button>
-            `;
-        }
-
-        function changePage(page) { if (page < 1) return; currentPage = page; fetchAndRender(); }
-        function switchTab(tab) {
-            currentTab = tab;
-            document.getElementById('tab-models').classList.toggle('tab-active', tab === 0);
-            document.getElementById('tab-categories').classList.toggle('tab-active', tab === 1);
-            currentPage = 1;
-            fetchAndRender();
-        }
-
-        // Открытие приватного канала
-        function openModelChannel() {
-            window.open("https://t.me/+u8svaG24-xo5MDMy", "_blank");
+        // Открытие канала с хэштегами
+        function openModelChannel(hashtags) {
+            let url = CHANNEL_LINK;
+            if (hashtags) {
+                // Добавляем хэштеги в ссылку для быстрого поиска
+                const cleanTags = hashtags.replace(/#/g, '').trim();
+                if (cleanTags) url += `?q=${encodeURIComponent(cleanTags)}`;
+            }
+            window.open(url, "_blank");
         }
 
         function toggleAdminPanel() {
@@ -173,25 +154,13 @@
             models.forEach(model => {
                 html += `
                     <div class="bg-zinc-800 rounded-3xl p-6">
-                        <div class="flex gap-4 mb-6">
-                            <input type="text" id="name-ru-${model.id}" value="${model.name_ru || ''}" placeholder="Имя RU" class="flex-1 bg-zinc-900 p-4 rounded-2xl">
-                            <input type="text" id="name-en-${model.id}" value="${model.name_en || ''}" placeholder="Имя ENG" class="flex-1 bg-zinc-900 p-4 rounded-2xl">
-                            <button onclick="saveModelNames(${model.id})" class="bg-emerald-600 hover:bg-emerald-700 px-6 py-4 rounded-2xl">Сохранить</button>
-                            <button onclick="deleteModel(${model.id})" class="bg-red-600 hover:bg-red-700 px-6 py-4 rounded-2xl">Удалить</button>
-                        </div>
-
-                        <div class="flex gap-3 mb-6">
-                            <input type="file" id="video-file-${model.id}" accept="video/*" class="flex-1 bg-zinc-900 p-4 rounded-2xl">
-                            <button onclick="addVideoToModel(${model.id})" class="bg-pink-600 hover:bg-pink-700 px-8 py-4 rounded-2xl">Добавить видео</button>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4" id="media-list-${model.id}">
-                            ${(model.media || []).filter(m => m.type === 'video').map(m => `
-                                <div class="bg-zinc-950 rounded-2xl p-3">
-                                    <video src="${m.url}" class="w-full rounded-xl" controls></video>
-                                    <button onclick="deleteMedia(${model.id}, ${m.id})" class="mt-2 w-full bg-red-600 py-2 rounded-xl text-sm">Удалить видео</button>
-                                </div>
-                            `).join('')}
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xl font-medium">${model.name_ru || model.name_en}</p>
+                                <p class="text-pink-400 text-sm">${model.hashtags || ''}</p>
+                            </div>
+                            <button onclick="deleteModel(${model.id})" 
+                                    class="bg-red-600 hover:bg-red-700 px-5 py-2 rounded-2xl text-sm">Удалить</button>
                         </div>
                     </div>`;
             });
@@ -199,51 +168,9 @@
             document.getElementById('admin-list').innerHTML = html || '<p class="text-gray-400 text-center py-10">Моделей пока нет</p>';
         }
 
-        async function saveModelNames(modelId) {
-            const nameRu = document.getElementById(`name-ru-${modelId}`).value.trim();
-            const nameEn = document.getElementById(`name-en-${modelId}`).value.trim();
-
-            const formData = new FormData();
-            formData.append('name_ru', nameRu);
-            formData.append('name_en', nameEn);
-
-            await fetch(`/api/models/${modelId}`, { method: 'PATCH', body: formData });
-            alert('Названия обновлены');
-            loadAdminModels();
-        }
-
-        async function addVideoToModel(modelId) {
-            const fileInput = document.getElementById(`video-file-${modelId}`);
-            if (!fileInput.files[0]) return alert('Выберите видео');
-
-            const formData = new FormData();
-            formData.append('type', 'video');
-            formData.append('description_ru', '');
-            formData.append('description_en', '');
-            formData.append('file', fileInput.files[0]);
-
-            const res = await fetch(`/api/models/${modelId}/media`, { 
-                method: 'POST', 
-                body: formData 
-            });
-
-            if (res.ok) {
-                alert('Видео добавлено!');
-                loadAdminModels();
-            } else {
-                alert('Ошибка при добавлении видео');
-            }
-        }
-
-        async function deleteModel(modelId) {
+        async function deleteModel(id) {
             if (!confirm('Удалить модель?')) return;
-            await fetch(`/api/models/${modelId}`, { method: 'DELETE' });
-            loadAdminModels();
-        }
-
-        async function deleteMedia(modelId, mediaId) {
-            if (!confirm('Удалить видео?')) return;
-            await fetch(`/api/models/${modelId}/media/${mediaId}`, { method: 'DELETE' });
+            await fetch(`/api/models/${id}`, { method: 'DELETE' });
             loadAdminModels();
         }
 
@@ -253,27 +180,25 @@
                 e.preventDefault();
 
                 const formData = new FormData();
-                formData.append('initData', initData);                    // ← Важно!
-                formData.append('name_ru', document.getElementById('model-ru').value);
-                formData.append('name_en', document.getElementById('model-en').value || '');
+                formData.append('initData', initData);
+                formData.append('name_ru', document.getElementById('model-name').value.trim());
+                formData.append('name_en', '');
+                formData.append('hashtags', document.getElementById('model-hashtags').value.trim());
                 formData.append('cover', document.getElementById('model-cover').files[0]);
 
                 try {
-                    const res = await fetch('/api/models', { 
-                        method: 'POST', 
-                        body: formData 
-                    });
-
+                    const res = await fetch('/api/models', { method: 'POST', body: formData });
                     if (res.ok) {
                         alert('Модель успешно добавлена!');
                         document.getElementById('add-model-form').reset();
                         loadAdminModels();
+                        fetchAndRender();   // обновляем главную страницу
                     } else {
-                        const error = await res.json();
-                        alert('Ошибка: ' + (error.detail || 'Неизвестная ошибка'));
+                        const err = await res.json();
+                        alert('Ошибка: ' + (err.detail || 'Не удалось добавить модель'));
                     }
                 } catch (err) {
-                    alert('Ошибка соединения с сервером');
+                    alert('Ошибка соединения');
                 }
             });
         });
