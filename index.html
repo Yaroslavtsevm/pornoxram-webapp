@@ -48,19 +48,19 @@
             <div class="p-6">
                 <form id="add-model-form" class="space-y-5">
                     <div>
-                        <label class="block text-sm mb-1">Model Name</label>
+                        <label class="block text-sm mb-1">Имя модели</label>
                         <input type="text" id="model-name" placeholder="Aaliyah Love" class="w-full bg-zinc-800 p-4 rounded-2xl" required>
                     </div>
                     <div>
-                        <label class="block text-sm mb-1">Cover Photo</label>
+                        <label class="block text-sm mb-1">Обложка</label>
                         <input type="file" id="model-cover" accept="image/*" class="w-full bg-zinc-800 p-4 rounded-2xl" required>
                     </div>
                     <div>
-                        <label class="block text-sm mb-1">Hashtag</label>
+                        <label class="block text-sm mb-1">Хэштег (опционально)</label>
                         <input type="text" id="model-hashtag" placeholder="#AaliyahLove" class="w-full bg-zinc-800 p-4 rounded-2xl">
                     </div>
                     <button type="submit" class="w-full bg-pink-600 hover:bg-pink-700 py-5 rounded-3xl font-bold text-lg">
-                        Add Model
+                        Добавить модель
                     </button>
                 </form>
             </div>
@@ -78,10 +78,14 @@
         }
 
         async function fetchAndRender() {
-            const res = await fetch('/api/models?limit=50');
-            if (!res.ok) return;
-            const data = await res.json();
-            renderModels(data.items);
+            try {
+                const res = await fetch('/api/models?limit=50');
+                if (!res.ok) throw new Error('Failed to load');
+                const data = await res.json();
+                renderModels(data.items);
+            } catch (e) {
+                console.error(e);
+            }
         }
 
         function renderModels(models) {
@@ -96,7 +100,7 @@
                         <div class="p-4 text-center"><p class="font-medium">${title}</p></div>
                     </div>`;
             });
-            container.innerHTML = html || '<p class="text-center text-gray-400 py-12">No models yet</p>';
+            container.innerHTML = html || '<p class="text-center text-gray-400 py-12">Пока нет моделей</p>';
         }
 
         function openChannel(hashtags) {
@@ -109,12 +113,12 @@
             document.getElementById('admin-panel').classList.toggle('hidden');
         }
 
-        // Добавление модели
+        // === ИСПРАВЛЕННАЯ ОТПРАВКА ===
         document.getElementById('add-model-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const formData = new FormData();
-            formData.append('initData', initData);
+            formData.append('init_data', initData);           // ← ИЗМЕНЕНО на init_data
             formData.append('name_ru', document.getElementById('model-name').value.trim());
             formData.append('hashtags', document.getElementById('model-hashtag').value.trim());
             formData.append('cover', document.getElementById('model-cover').files[0]);
@@ -126,15 +130,18 @@
                 });
 
                 if (res.ok) {
-                    alert('✅ Model added successfully!');
+                    alert('✅ Модель успешно добавлена!');
                     document.getElementById('add-model-form').reset();
                     fetchAndRender();
+                    toggleAdminPanel();
                 } else {
                     const error = await res.json().catch(() => ({}));
-                    alert('Error: ' + (error.detail || 'Failed to add model'));
+                    alert(`❌ Ошибка: ${error.detail || res.statusText}`);
+                    console.error(error);
                 }
             } catch (err) {
-                alert('Connection error. Please try again.');
+                alert('Ошибка соединения. Проверьте интернет.');
+                console.error(err);
             }
         });
 
