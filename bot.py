@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException, Query
+from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException, Query, Depends
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import cloudinary
@@ -10,7 +10,7 @@ from hashlib import sha256
 from hmac import compare_digest, new as hmac_new
 from urllib.parse import parse_qsl, unquote_plus
 
-app = FastAPI(title="PornoXram API")
+app = FastAPI(title="PX Models API")
 
 # ===================== CLOUDINARY =====================
 cloudinary.config(
@@ -20,7 +20,6 @@ cloudinary.config(
     secure=True
 )
 
-# ===================== НАСТРОЙКИ =====================
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8313221258:AAG9XsV4y1fJ-z5tpccc9t9eesJRzXMhpwI")
 ADMIN_USER_ID = 1423028519
 
@@ -31,15 +30,8 @@ INDEX_FILE = BASE_DIR / "index.html"
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# ===================== СТАТИЧЕСКИЕ ФАЙЛЫ =====================
-static_dir = BASE_DIR / "static"
-if static_dir.exists():
-    app.mount("/static", StaticFiles(directory="static"), name="static")
-else:
-    print("Warning: 'static' directory not found.")
-
-# ===================== ВАЛИДАЦИЯ =====================
-def validate_init_data(init_data: str) -> dict | None:
+# ===================== ВАЛИДАЦИЯ TELEGRAM INIT DATA =====================
+def validate_init_data(init_data: str):
     try:
         init_data = unquote_plus(init_data)
         data_dict = dict(parse_qsl(init_data, keep_blank_values=True))
@@ -47,7 +39,7 @@ def validate_init_data(init_data: str) -> dict | None:
         if not received_hash:
             return None
 
-        data_check_string = "\n".join(sorted(f"{key}={value}" for key, value in data_dict.items()))
+        data_check_string = "\n".join(sorted(f"{k}={v}" for k, v in data_dict.items()))
         secret_key = hmac_new(key=b"WebAppData", msg=BOT_TOKEN.encode(), digestmod=sha256).digest()
         calculated_hash = hmac_new(key=secret_key, msg=data_check_string.encode(), digestmod=sha256).hexdigest()
 
@@ -60,11 +52,13 @@ def validate_init_data(init_data: str) -> dict | None:
     except Exception:
         return None
 
-def is_admin(init_data_str: str) -> bool:
-    data = validate_init_data(init_data_str)
-    return data and data.get("user", {}).get("id") == ADMIN_USER_ID
+def get_current_admin(init_data: str = Form(alias="init_data")):
+    data = validate_init_data(init_data)
+    if not data or data.get("user", {}).get("id") != ADMIN_USER_ID:
+        raise HTTPException(status_code=403, detail="Доступ запрещён. Вы не админ.")
+    return data
 
-# ===================== ЗАГРУЗКА =====================
+# ===================== ЗАГРУЗКА ФАЙЛОВ =====================
 async def upload_to_cloudinary(file: UploadFile):
     contents = await file.read()
     result = cloudinary.uploader.upload(
@@ -73,7 +67,7 @@ async def upload_to_cloudinary(file: UploadFile):
         folder="pornoxram",
         use_filename=True,
         unique_filename=True,
-        transformation=[{"width": 1200, "crop": "limit"}, {"quality": "auto"}]
+        transformation=[{"width": 1200, "crop": "limit"}, {"quality": "auto", "fetch_format": "auto"}]
     )
     return result["secure_url"]
 
@@ -81,45 +75,34 @@ async def upload_to_cloudinary(file: UploadFile):
 def load_data():
     if DATA_FILE.exists():
         try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
+            return json.loads(DATA_FILE.read_text(encoding="utf-8"))
+        except:
             pass
     return {"models": []}
 
 def save_data(data):
-    try:
-        with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f"Save error: {e}")
+    DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 app_data = load_data()
 
-# ===================== API =====================
+# ===================== СТАТИКА =====================
+if (BASE_DIR / "static").exists():
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# ===================== РОУТЫ =====================
 @app.get("/", response_class=HTMLResponse)
 async def serve_webapp():
     if not INDEX_FILE.exists():
-        return HTMLResponse("<h1 style='color:red;text-align:center;margin-top:100px;'>index.html not found</h1>", status_code=404)
+        return HTMLResponse("<h1 style='color:red;text-align:center;margin-top:100px;'>index.html not found</h1>", 404)
     return HTMLResponse(INDEX_FILE.read_text(encoding="utf-8"))
 
-@app.get("/api/check_admin")
-async def check_admin(request: Request):
-    init_data = request.headers.get("X-Telegram-Init-Data", "")
-    return {"is_admin": is_admin(init_data)}
-
-# ===================== ДОБАВЛЕНИЕ МОДЕЛИ (самое важное) =====================
 @app.post("/api/models")
 async def add_model(
-    initData: str = Form(...),
     name_ru: str = Form(...),
     hashtags: str = Form(""),
-    cover: UploadFile = File(...)
+    cover: UploadFile = File(...),
+    admin_data: dict = Depends(get_current_admin)
 ):
-    if not is_admin(initData):
-        raise HTTPException(status_code=403, detail="Доступ запрещён")
-
     cover_url = await upload_to_cloudinary(cover)
 
     new_id = max((m.get("id", 0) for m in app_data["models"]), default=0) + 1
@@ -135,11 +118,10 @@ async def add_model(
     app_data["models"].append(model)
     save_data(app_data)
 
-    return {"success": True, "id": new_id}
+    return {"success": True, "id": new_id, "message": "Модель добавлена"}
 
-# ===================== ПОЛУЧЕНИЕ МОДЕЛЕЙ =====================
 @app.get("/api/models")
-async def get_models(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le=200), search: str = Query(None)):
+async def get_models(page: int = Query(1, ge=1), limit: int = Query(50, ge=1, le=200), search: str = Query(None)):
     items = app_data["models"]
     if search:
         s = search.lower()
@@ -149,16 +131,11 @@ async def get_models(page: int = Query(1, ge=1), limit: int = Query(20, ge=1, le
     return {
         "items": items[start:start + limit],
         "total": total,
-        "page": page,
-        "pages": (total + limit - 1) // limit
+        "page": page
     }
 
-# ===================== УДАЛЕНИЕ МОДЕЛИ =====================
 @app.delete("/api/models/{model_id}")
-async def delete_model(model_id: int, request: Request):
-    if not is_admin(request.headers.get("X-Telegram-Init-Data", "")):
-        raise HTTPException(status_code=403, detail="Доступ запрещён")
-
+async def delete_model(model_id: int, admin_data: dict = Depends(get_current_admin)):
     app_data["models"] = [m for m in app_data["models"] if m["id"] != model_id]
     save_data(app_data)
     return {"success": True}
