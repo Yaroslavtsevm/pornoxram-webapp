@@ -10,7 +10,7 @@ from hashlib import sha256
 from hmac import compare_digest, new as hmac_new
 from urllib.parse import parse_qsl, unquote_plus
 
-app = FastAPI(title="PX Models — Telegram WebApp")
+app = FastAPI(title="PX Models", version="2.0")
 
 # ===================== CLOUDINARY =====================
 cloudinary.config(
@@ -21,9 +21,9 @@ cloudinary.config(
 )
 
 # ===================== НАСТРОЙКИ =====================
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8313221258:AAG9XsV4y1fJ-z5tpccc9t9eesJRzXMhpwI")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_USER_ID = 1423028519
-CHANNEL_LINK = "https://t.me/+u8svaG24-xo5MDMy"   # ← ваш приватный канал
+CHANNEL_LINK = "https://t.me/+u8svaG24-xo5MDMy"
 
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
@@ -31,8 +31,10 @@ DATA_FILE = DATA_DIR / "data.json"
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-# ===================== ВАЛИДАЦИЯ INIT DATA =====================
+# ===================== ВАЛИДАЦИЯ TELEGRAM INIT DATA =====================
 def validate_init_data(init_data: str) -> dict | None:
+    if not init_data:
+        return None
     try:
         init_data = unquote_plus(init_data)
         data_dict = dict(parse_qsl(init_data, keep_blank_values=True))
@@ -40,9 +42,9 @@ def validate_init_data(init_data: str) -> dict | None:
         if not received_hash:
             return None
 
-        data_check_string = "\n".join(sorted(f"{key}={value}" for key, value in data_dict.items()))
-        secret_key = hmac_new(key=b"WebAppData", msg=BOT_TOKEN.encode(), digestmod=sha256).digest()
-        calculated_hash = hmac_new(key=secret_key, msg=data_check_string.encode(), digestmod=sha256).hexdigest()
+        data_check_string = "\n".join(sorted(f"{k}={v}" for k, v in data_dict.items()))
+        secret_key = hmac_new(b"WebAppData", BOT_TOKEN.encode(), sha256).digest()
+        calculated_hash = hmac_new(secret_key, data_check_string.encode(), sha256).hexdigest()
 
         if not compare_digest(calculated_hash, received_hash):
             return None
@@ -50,7 +52,8 @@ def validate_init_data(init_data: str) -> dict | None:
         if "user" in data_dict:
             data_dict["user"] = json.loads(data_dict["user"])
         return data_dict
-    except Exception:
+    except Exception as e:
+        print(f"InitData validation error: {e}")
         return None
 
 def is_admin(init_data_str: str) -> bool:
@@ -74,10 +77,11 @@ def save_data(data):
 app_data = load_data()
 
 # ===================== СТАТИКА =====================
-if (BASE_DIR / "static").exists():
+static_dir = BASE_DIR / "static"
+if static_dir.exists():
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# ===================== СЕРВИС =====================
+# ===================== РОУТЫ =====================
 @app.get("/", response_class=HTMLResponse)
 async def serve_webapp():
     index_path = BASE_DIR / "index.html"
@@ -90,21 +94,14 @@ async def check_admin(request: Request):
     init_data = request.headers.get("X-Telegram-Init-Data", "")
     return {"is_admin": is_admin(init_data)}
 
-# ===================== МОДЕЛИ =====================
 @app.get("/api/models")
-async def get_models(page: int = Query(1, ge=1), limit: int = Query(200, ge=1, le=500), search: str = Query(None)):
+async def get_models(search: str = Query(None, max_length=100)):
     items = app_data["models"]
     if search:
         s = search.lower()
-        items = [m for m in items if s in str(m.get("name_ru", "")).lower() or s in str(m.get("hashtags", "")).lower()]
-    total = len(items)
-    start = (page - 1) * limit
-    return {
-        "items": items[start:start + limit],
-        "total": total,
-        "page": page,
-        "pages": (total + limit - 1) // limit
-    }
+        items = [m for m in items if s in str(m.get("name_ru", "")).lower() or 
+                                      s in str(m.get("hashtags", "")).lower()]
+    return {"items": items, "total": len(items)}
 
 @app.post("/api/models")
 async def add_model(
@@ -114,45 +111,45 @@ async def add_model(
     cover: UploadFile = File(...)
 ):
     if not is_admin(initData):
-        raise HTTPException(status_code=403, detail="Доступ запрещён")
+        raise HTTPException(403, "Доступ запрещён")
 
-    # Загрузка обложки
-    contents = await cover.read()
+    # Загрузка в Cloudinary
     result = cloudinary.uploader.upload(
-        contents,
-        resource_type="image",
+        await cover.read(),
         folder="pornoxram",
-        use_filename=True,
-        unique_filename=True,
+        resource_type="image",
         transformation=[{"width": 1200, "crop": "limit"}, {"quality": "auto"}]
     )
-    cover_url = result["secure_url"]
 
     new_id = max((m.get("id", 0) for m in app_data["models"]), default=0) + 1
 
     model = {
         "id": new_id,
         "name_ru": name_ru.strip(),
-        "hashtags": hashtags.strip(),
-        "cover_url": cover_url,
+        "hashtags": hashtags.strip() or f"#{name_ru.replace(' ', '')}",
+        "cover_url": result["secure_url"],
         "media": []
     }
 
     app_data["models"].append(model)
     save_data(app_data)
 
-    return {"success": True, "id": new_id, "message": "Модель добавлена и готова к использованию в канале"}
+    return {"success": True, "message": "Модель добавлена успешно!"}
 
 @app.delete("/api/models/{model_id}")
 async def delete_model(model_id: int, request: Request):
     if not is_admin(request.headers.get("X-Telegram-Init-Data", "")):
-        raise HTTPException(status_code=403, detail="Доступ запрещён")
+        raise HTTPException(403, "Доступ запрещён")
 
-    original_len = len(app_data["models"])
+    original = len(app_data["models"])
     app_data["models"] = [m for m in app_data["models"] if m["id"] != model_id]
 
-    if len(app_data["models"]) == original_len:
-        raise HTTPException(status_code=404, detail="Модель не найдена")
+    if len(app_data["models"]) == original:
+        raise HTTPException(404, "Модель не найдена")
 
     save_data(app_data)
-    return {"success": True, "message": f"Модель {model_id} удалена"}
+    return {"success": True}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
